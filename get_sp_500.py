@@ -14,14 +14,10 @@ HEADERS = {
     'Access-Control-Max-Age': '3600',
     'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0'
     }
-data = pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
-summary_table = data[0]
-tickers = summary_table['Symbol'].values
 
-# %%
-sample_tickers = tickers[:10]
+if __name__ == '__main__':
+    data = pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
+    summary_table = data[0]
+    tickers = summary_table['Symbol']
+    tickers.to_json('data/sp500_tickers.json')
 
-# %%
-tickers_df = pd.DataFrame(tickers)
-print(tickers_df)
-tickers_df.to_json('data/sp500.json')
