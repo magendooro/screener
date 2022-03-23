@@ -2,7 +2,7 @@ from operator import index
 import streamlit as st
 import pandas as pd
 from datetime import date
-from get_data import calculate_metrics
+from metrics import calculate_metrics, read_all_tickers
 import seaborn as sns
 import matplotlib.pyplot as plt
 
