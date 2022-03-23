@@ -1,19 +1,26 @@
-# %%
+
+import sys
 import os
-from re import T
+import json
 import urllib
+
 from bs4 import BeautifulSoup
 import pandas as pd
+from urllib3 import Retry
 import yfinance as yf 
 import pandas_datareader as dtr
 import datetime 
 import time 
 from tqdm import tqdm
 from copy import deepcopy
+
+import dask.dataframe as dd
+
 from talib import WILLR
 from talib import EMA
 
-# %%
+
+
 HEADERS = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET',
@@ -23,22 +30,7 @@ HEADERS = {
     }
 
 
-# %%
-data = pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
 
-
-# %%
-summary_table = data[0]
-tickers = summary_table['Symbol'].values
-
-# %%
-sample_tickers = tickers[:10]
-
-# %%
-tickers_df = pd.DataFrame(tickers)
-
-
-# %%
 yf_params = {
     'start':datetime.date.fromisoformat('2021-06-01'),
     'end':datetime.date.fromisoformat('2022-01-01'),
@@ -49,44 +41,51 @@ yf_params = {
     'get_actions': True,
     'adjust_dividends': True
 }
-TICKER_FOLDER = 'data/tickers/'
-# %%
-def get_historical_data(tickers,
-    previous_data = None,
-    params = {},
-    timeout = .1):
-    print(f"YF parameters: {params}")
-    collector = []
-    unretrieved_count = 0
-    for ticker in tqdm(tickers):
-        try:
-            df = dtr.get_data_yahoo(symbols = ticker, **params)
-            # df.reset_index(inplace = True)
-            df['Symbol'] = ticker
-            collector.append(df)
-            time.sleep(timeout)
-        except:
-            print(f"Couldn't retieve data for {ticker}")
-            unretrieved_count += 1
-    print(f"# Unretrieved tickers: {unretrieved_count}")
-    collected_data = pd.concat(collector)
-    collected_data.reset_index(inplace=True)
-    collected_data.Date = collected_data.Date.apply(lambda x: x.date())
-    if previous_data is not None:
-        if not previous_data.empty:
-            updated_data = pd.concat([collected_data, previous_data], axis=0)
-            return collected_data, previous_data, updated_data
-    else:
-        return collected_data
 
-#%%
+TICKER_FOLDER = 'data/tickers/'
+
+# def get_historical_data(tickers,
+#     previous_data = None,
+#     params = {},
+#     timeout = .1):
+#     print(f"YF parameters: {params}")
+#     collector = []
+#     unretrieved_count = 0
+#     for ticker in tqdm(tickers):
+#         try:
+#             df = dtr.get_data_yahoo(symbols = ticker, **params)
+#             # df.reset_index(inplace = True)
+#             df['Symbol'] = ticker
+#             collector.append(df)
+#             time.sleep(timeout)
+#         except:
+#             print(f"Couldn't retieve data for {ticker}")
+#             unretrieved_count += 1
+#     print(f"# Unretrieved tickers: {unretrieved_count}")
+#     collected_data = pd.concat(collector)
+#     collected_data.reset_index(inplace=True)
+#     collected_data.Date = collected_data.Date.apply(lambda x: x.date())
+#     if previous_data is not None:
+#         if not previous_data.empty:
+#             updated_data = pd.concat([collected_data, previous_data], axis=0)
+#             return collected_data, previous_data, updated_data
+#     else:
+#         return collected_data
+
+
+def read_all_tickers(folder_path):
+    ddf = dd.read_csv(f"{folder_path}/*.csv", )
+    df = ddf.compute()
+    return df
+
+
 def get_hist_data(ticker: str, params: dict = None) -> pd.DataFrame:
     df = dtr.get_data_yahoo(symbols = ticker, **params)
     df['Symbol'] = ticker
     return df
+
     
-    
-#%%
+
 def collect_tickers(tickers, params: dict = None, timeout:float = 0.1) -> None:
     
     
@@ -97,16 +96,17 @@ def collect_tickers(tickers, params: dict = None, timeout:float = 0.1) -> None:
     for ticker in tqdm(tickers):
         try:
             ticker_df = get_hist_data(ticker = ticker, params = params)
-            ticker_df.to_csv(TICKER_FOLDER + ticker + '.csv', index_label= 'Date')
+            ticker_df.to_csv(TICKER_FOLDER + ticker + '.csv', index = True)
             time.sleep(timeout)
         except:
             print(f"Couldn't retrieve data for '{ticker}'", flush = True)
 
 
 def update_tickers(tickers, params, timeout:float = .1):
-    """ If ticker data has been previously saved, update it, otherwise get and save it """
+    """ If ticker data has been previously saved, update it, otherwise get it and save it """
     # Yesterday
     params['end'] = datetime.date.today() - datetime.timedelta(days=1) 
+    # Instead of passing down a ticker param, why not check what's already saved..
 
     for ticker in tqdm(tickers):
         ticker_path = TICKER_FOLDER + ticker + '.csv'
@@ -119,66 +119,30 @@ def update_tickers(tickers, params, timeout:float = .1):
             new_df.reset_index(inplace=True)
             new_df.Date = new_df.Date.apply(lambda x: x.date())
             updated_df = pd.concat([old_df, new_df], ignore_index = True)
-            updated_df.to_csv(ticker_path)
+            updated_df.to_csv(ticker_path, index = False)
             time.sleep(timeout)
         else:
             ticker_df = get_hist_data(ticker = ticker, params = params)
             ticker_df.to_csv(TICKER_FOLDER + ticker + '.csv', index_label= 'Date')
             time.sleep(timeout)
 
-# THE PARAM PROBLEM could be solved in the main
 
 
+# def update_dataframe(tickers, previous_data: pd.DataFrame, params:dict, timeout = 1):
+#     """ Given a dataframe, update it to include everything until today """
 
-# %%
-# def get_daily_update(tickers,
-#                     previous_data = None,
-#                     date_string: str = None,
-#                     yfparams: dict = None):
-#     """ If date_string = None --> get today's """
-#     params = deepcopy(yfparams)
+#     start = datetime.datetime.strptime(previous_data.Date.max(), '%Y-%m-%d') + datetime.timedelta(days = 1)
+#     end = datetime.date.today() - datetime.timedelta(days = 1) # Yesterday
+#     params['start'] = start
+#     params['end'] = end
     
-#     if date_string is None:
-#         last_weekday = get_last_weekday(datetime.datetime.today() - datetime.timedelta(days = 1))
-#         params['end'] = last_weekday
-#         params['start'] = last_weekday
-#     else:
-#         params['end'] = datetime.date.fromisoformat(date_string)
-#         params['start'] = datetime.date.fromisoformat(date_string)
-
-
-#     # When to update?
-#     if params['start'].isoweekday() not in range(1,6):
-#         print('The selected day is a weekend...')
-#         raise AttributeError
-    
-
-#     daily_update = get_historical_data(tickers = tickers, previous_data = None, yfparams = params, timeout=.1)   
-#     if previous_data is not None:
-#         return pd.concat([previous_data, daily_update])
-#     else:
-#         return daily_update
-
-
-
-# %%
-
-# %%
-def update_dataframe(tickers, previous_data: pd.DataFrame, params:dict, timeout = 1):
-    """ Given a dataframe, update it to include everything until today """
-
-    start = datetime.datetime.strptime(previous_data.Date.max(), '%Y-%m-%d') + datetime.timedelta(days = 1)
-    end = datetime.date.today() - datetime.timedelta(days = 1) # Yesterday
-    params['start'] = start
-    params['end'] = end
-    
-    new_data = get_historical_data(tickers = tickers, previous_data = previous_data, params=params, timeout=timeout)
-    return new_data
+#     new_data = get_historical_data(tickers = tickers, previous_data = previous_data, params=params, timeout=timeout)
+#     return new_data
 
 
 
 
-# %%
+
 def calculate_metrics(updated_df, will_r_timeperiod = 21, ema_timeperiod = 13):
     tickers = updated_df.Symbol.unique()
 
@@ -198,20 +162,21 @@ def calculate_metrics(updated_df, will_r_timeperiod = 21, ema_timeperiod = 13):
     indexed_df.drop(columns = ['index'], inplace = True)
     return indexed_df
 
-# %%
+
 
 
 
 if __name__ == "__main__":
-    data_path = 'data/stocks_data.csv'
-    if os.path.exists(data_path):
-        data = pd.read_csv(data_path, index_col=[0])
-        c, p, u = update_dataframe(tickers, previous_data=data, params = yfparams, timeout=0.3)
-        u.to_csv(data_path)
-    else:
-        data = get_historical_data(tickers = tickers, previous_data=None, params = yfparams)
-        data.to_csv(data_path)
+    args = sys.argv
+    with open('data/sp500_tickers.json', 'r') as f:
+        ticker_dict = json.load(f)
 
-#%%
-
-# %%
+    tickers = list(ticker_dict.values())
+   
+    if (args[1] == '-collect') or (args[1]== '--c'):
+        collect_tickers(tickers, yf_params)
+    elif (args[1] == '-update') or (args[1]== '--u'):
+        update_tickers(tickers, yf_params)
+    else: 
+        print('Invalid argument..')
+    
