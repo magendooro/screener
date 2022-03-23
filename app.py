@@ -1,5 +1,4 @@
-#%%
-from re import S
+from operator import index
 import streamlit as st
 import pandas as pd
 from datetime import date
@@ -7,9 +6,11 @@ from get_data import calculate_metrics
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+from metrics import read_all_tickers
+
 plt.style.use('dark_background')
-#%%
-data = pd.read_csv('data/stocks_data.csv', index_col=[0])
+
+data = read_all_tickers('data/tickers/')
 data.Date = data.Date.apply(lambda x: date.fromisoformat(x))
 
 @st.cache
@@ -17,7 +18,7 @@ def update_data(data, williams_choice, ema_choice):
     return calculate_metrics(data,
         will_r_timeperiod=williams_choice,
         ema_timeperiod=ema_choice)
-#%%
+
 intro = st.container()
 intro.title("S&P500 metrics")
     
@@ -86,7 +87,7 @@ with exploration:
     with date_col1:
         date_lower = st.date_input(
             label = 'From',
-            value = updated_data.Date.max(),
+            value = updated_data.Date.min(),
             min_value = updated_data.Date.min(),
             max_value = updated_data.Date.max())
     with date_col2:
@@ -106,6 +107,7 @@ with exploration:
         
 
 
-# %%
 
-# %%
+
+
+
