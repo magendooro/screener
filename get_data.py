@@ -1,5 +1,6 @@
 # %%
 import os
+from re import T
 import urllib
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -38,8 +39,8 @@ tickers_df = pd.DataFrame(tickers)
 
 
 # %%
-yfparams = {
-    'start':datetime.date.fromisoformat('2020-01-01'),
+yf_params = {
+    'start':datetime.date.fromisoformat('2021-06-01'),
     'end':datetime.date.fromisoformat('2022-01-01'),
     'pause': .1, 
     'adjust_price':True, 
@@ -48,7 +49,7 @@ yfparams = {
     'get_actions': True,
     'adjust_dividends': True
 }
-
+TICKER_FOLDER = 'data/tickers/'
 # %%
 def get_historical_data(tickers,
     previous_data = None,
@@ -78,12 +79,56 @@ def get_historical_data(tickers,
     else:
         return collected_data
 
-# %%
-# def get_last_weekday(given_date):
-#     given_date -= datetime.timedelta(days=1)
-#     while given_date.weekday() > 4: # Mon-Fri are 0-4
-#         given_date -= datetime.timedelta(days=1)
-#     return given_date
+#%%
+def get_hist_data(ticker: str, params: dict = None) -> pd.DataFrame:
+    df = dtr.get_data_yahoo(symbols = ticker, **params)
+    df['Symbol'] = ticker
+    return df
+    
+    
+#%%
+def collect_tickers(tickers, params: dict = None, timeout:float = 0.1) -> None:
+    
+    
+    if not os.path.exists(TICKER_FOLDER):
+        os.mkdir(TICKER_FOLDER)
+    
+    
+    for ticker in tqdm(tickers):
+        try:
+            ticker_df = get_hist_data(ticker = ticker, params = params)
+            ticker_df.to_csv(TICKER_FOLDER + ticker + '.csv', index_label= 'Date')
+            time.sleep(timeout)
+        except:
+            print(f"Couldn't retrieve data for '{ticker}'", flush = True)
+
+
+def update_tickers(tickers, params, timeout:float = .1):
+    """ If ticker data has been previously saved, update it, otherwise get and save it """
+    # Yesterday
+    params['end'] = datetime.date.today() - datetime.timedelta(days=1) 
+
+    for ticker in tqdm(tickers):
+        ticker_path = TICKER_FOLDER + ticker + '.csv'
+        if os.path.exists(ticker_path):
+            old_df = pd.read_csv(ticker_path)
+            new_start = datetime.date.fromisoformat(old_df.Date.max()) + datetime.timedelta(days=1)
+            params['start'] = new_start
+            
+            new_df = get_hist_data(ticker = ticker, params = params)
+            new_df.reset_index(inplace=True)
+            new_df.Date = new_df.Date.apply(lambda x: x.date())
+            updated_df = pd.concat([old_df, new_df], ignore_index = True)
+            updated_df.to_csv(ticker_path)
+            time.sleep(timeout)
+        else:
+            ticker_df = get_hist_data(ticker = ticker, params = params)
+            ticker_df.to_csv(TICKER_FOLDER + ticker + '.csv', index_label= 'Date')
+            time.sleep(timeout)
+
+# THE PARAM PROBLEM could be solved in the main
+
+
 
 # %%
 # def get_daily_update(tickers,
