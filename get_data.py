@@ -3,19 +3,22 @@ import os
 import json
 import urllib
 
-from bs4 import BeautifulSoup
+
 import pandas as pd
-from urllib3 import Retry
+
 import yfinance as yf 
 import pandas_datareader as dtr
+
 import datetime 
 import time 
 from tqdm import tqdm
-from copy import deepcopy
+
+# yf.pdr_override()
+
 
 yf_params = {
     'start':datetime.date.fromisoformat('2021-06-01'),
-    'end':datetime.date.fromisoformat('2022-01-01'),
+    'end':datetime.date.today(),
     'pause': .1, 
     'adjust_price':True, 
     'ret_index':False,
@@ -31,10 +34,9 @@ def get_hist_data(ticker: str, params: dict = None) -> pd.DataFrame:
     df['Symbol'] = ticker
     return df
 
-def collect_tickers(tickers, params: dict = None, timeout:float = 0.1) -> None:
+def collect_tickers(tickers, params: dict = None, timeout:float = 1) -> None:
     if not os.path.exists(TICKER_FOLDER):
         os.mkdir(TICKER_FOLDER)
-    
     
     for ticker in tqdm(tickers):
         try:
@@ -42,13 +44,13 @@ def collect_tickers(tickers, params: dict = None, timeout:float = 0.1) -> None:
             ticker_df.to_csv(TICKER_FOLDER + ticker + '.csv', index = True)
             time.sleep(timeout)
         except:
-            print(f"Couldn't retrieve data for '{ticker}'", flush = True)
+            print(f"Couldn't retrieve data for '{ticker}'")
 
 
-def update_tickers(params, timeout:float = .1):
+def update_tickers(params, timeout:float = 1):
     """ If ticker data has been previously saved, update it, otherwise get it and save it """
-    # Yesterday
-    params['end'] = datetime.date.today() - datetime.timedelta(days=1) 
+    
+    params['end'] = datetime.date.today()
     
     # Instead of passing down a ticker param, why not check what's already saved..
     tickers = [s.split('.')[0] for s in os.listdir('data/tickers')]
@@ -58,18 +60,24 @@ def update_tickers(params, timeout:float = .1):
         
         try:
             old_df = pd.read_csv(ticker_path)
-            new_start = datetime.date.fromisoformat(old_df.Date.max()) + datetime.timedelta(days=1)
+            new_start = datetime.date.fromisoformat(old_df.Date.max())
             params['start'] = new_start
+
+            if params['start'] == params['end']:
+                params['start'] = params['end'] - datetime.timedelta(days=1)
             
             new_df = get_hist_data(ticker = ticker, params = params)
             new_df.reset_index(inplace=True)
             new_df.Date = new_df.Date.apply(lambda x: x.date())
+            old_df.Date = old_df.Date.apply(lambda x: datetime.date.fromisoformat(x))
+
             updated_df = pd.concat([old_df, new_df], ignore_index = True)
             updated_df = updated_df.loc[updated_df.Date.drop_duplicates(keep = 'last').index]
             updated_df.to_csv(ticker_path, index = False)
             time.sleep(timeout)
         except:
             print(f"Couldn't update {ticker}")
+        
 
 if __name__ == "__main__":
     args = sys.argv
