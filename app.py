@@ -5,8 +5,11 @@ from datetime import date
 from metrics import calculate_metrics, read_all_tickers
 import seaborn as sns
 import matplotlib.pyplot as plt
-
+from pandas.core.common import SettingWithCopyWarning
 from metrics import read_all_tickers
+import warnings
+
+warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
 
 plt.style.use('dark_background')
 
