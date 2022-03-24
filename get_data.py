@@ -64,17 +64,12 @@ def update_tickers(params, timeout:float = .1):
             new_df = get_hist_data(ticker = ticker, params = params)
             new_df.reset_index(inplace=True)
             new_df.Date = new_df.Date.apply(lambda x: x.date())
-            updated_df = pd.concat([old_df, new_df], ignore_index = True) 
+            updated_df = pd.concat([old_df, new_df], ignore_index = True)
+            updated_df = updated_df.loc[updated_df.Date.drop_duplicates(keep = 'last').index]
             updated_df.to_csv(ticker_path, index = False)
             time.sleep(timeout)
         except:
             print(f"Couldn't update {ticker}")
-
-    
-
-
-
-
 
 if __name__ == "__main__":
     args = sys.argv

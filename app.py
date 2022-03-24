@@ -73,8 +73,8 @@ with filtered:
     
 if not filter_indep:
     thresh_filtered = date_filtered_data.loc[
-            (date_filtered_data.WillR > will_lower_thresh) & (date_filtered_data.WillR < will_upper_thresh) &
-            (date_filtered_data.WillR_EMA > ema_lower_thresh) & (date_filtered_data.WillR_EMA < ema_upper_thresh)
+            ((date_filtered_data.WillR > will_lower_thresh) & (date_filtered_data.WillR < will_upper_thresh)) &
+            ((date_filtered_data.WillR_EMA > ema_lower_thresh) & (date_filtered_data.WillR_EMA < ema_upper_thresh))
             ]
     
 else:
@@ -116,16 +116,34 @@ with exploration:
             value = updated_data.Date.max(),
             min_value = updated_data.Date.min(),
             max_value = updated_data.Date.max())
-    fig, ax = plt.subplots(figsize = (15, 5))
+
+    major_ticks = pd.date_range(start = date_lower, end = date_upper, periods = 10)
+    minor_ticks = pd.date_range(start = date_lower, end = date_upper, periods = 20)
+
+    fig, axs = plt.subplots(nrows = 2, ncols = 1,figsize = (15, 5), sharex = True)
     subset = updated_data.loc[(updated_data.Symbol == exploration_choice) & (updated_data.Date > date_lower) & ( updated_data.Date < date_upper)]
-    ax.plot(subset.Date, subset.WillR, label = 'W%R')
-    ax.plot(subset.Date, subset.WillR_EMA, label = 'EMA')
-    ax.set_title('Williams %R and EMA of Williams %R')
+    
+    axs[0].plot(subset.Date, subset.WillR, label = 'W%R')
+    axs[0].plot(subset.Date, subset.WillR_EMA, label = 'EMA')
+    axs[0].set_title('Williams %R and EMA of Williams %R')
+    # axs[0].grid(which='minor', alpha=0.2)
+    axs[0].grid(which='major', alpha=0.8)
+    axs[0].set_xticks(major_ticks)
+    # axs[0].set_xticks(minor_ticks, minor=True)
+
+    axs[1].plot(subset.Date, subset.Close, label = 'Close')
+    axs[1].set_title('Closing price')
+    # axs[1].grid(which='minor', alpha=0.2)
+    axs[1].grid(which='major', alpha=0.8)
+    axs[1].set_xticks(major_ticks)
+    # axs[1].set_xticks(minor_ticks, minor=True)
+    
+    
     plt.legend()
-    plt.grid()
+    
     plt.xticks(rotation = 45)
     st.pyplot(fig)
-        
+
 
 
 
