@@ -7,6 +7,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from pandas.core.common import SettingWithCopyWarning
 from metrics import read_all_tickers
+from metrics import check_gains
 import warnings
 
 warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
@@ -15,6 +16,11 @@ plt.style.use('dark_background')
 
 data = read_all_tickers('data/tickers/')
 data.Date = data.Date.apply(lambda x: date.fromisoformat(x))
+
+@st.cache
+def update_gains(data, timeframe = 1):
+    return check_gains(data, timeframe)
+
 
 @st.cache
 def update_data(data, williams_choice, ema_choice):
@@ -28,9 +34,25 @@ intro.title("S&P500 metrics")
 # Num tickers/timeframe 
 dataset_info = st.container()
 with dataset_info:
-    st.text(f"The dataset contains daily financial data for {len(data.Symbol.unique())} unique tickers for the timeframe: {data.Date.min()} — {data.Date.max()}")
+    st.markdown(f"The dataset contains daily financial data for **{len(data.Symbol.unique())}** unique tickers.")
+    st.markdown(f"The included tickers span from **{data.Date.min()}** to **{data.Date.max()}**")
     st.text(f"Sample from the dataset:")
-    st.write(data.head(3))
+    st.write(data)
+
+gains_section = st.container()
+with gains_section:
+    gains_df = update_gains(data)
+    gdf = gains_df.loc[gains_df.Date == gains_df.Date.max()].loc[:, ['Symbol', 'Close', 'Gains/Losses', ]].sort_values(by = 'Gains/Losses', ascending = True)
+    gdf.style.format(
+        {'Gains/Losses': '{:,.2%}'})
+    
+    
+    top_decrease = gdf.iloc[:5]
+    top_increase = gdf.iloc[-5:]
+    loss_columns = st.columns(len(top_decrease))
+    st.write(len(loss_columns))
+    for i in range(len(top_increase)):
+        loss_columns[i].metric(label = top_increase.iloc[i]['Symbol'], value = top_increase.iloc[i]['Close'], delta = top_increase.iloc[i]['Gains/Losses'])
 
 
 # User input and display tickers that satisfy the condition
@@ -73,7 +95,7 @@ with filtered:
     date_filtered_data = updated_data.loc[updated_data.Date == date_selection]
 
 # Filtering results
-    
+
 if not filter_indep:
     thresh_filtered = date_filtered_data.loc[
             ((date_filtered_data.WillR > will_lower_thresh) & (date_filtered_data.WillR < will_upper_thresh)) &
