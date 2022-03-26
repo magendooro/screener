@@ -18,7 +18,7 @@ from tqdm import tqdm
 yf_params = {
     "interval":'1d',
     "start" : datetime.date(2019,1,1),
-    "end" : datetime.date.today(),
+    "end" : datetime.date.today() - datetime.timedelta(days = 7),
     "group_by":'ticker',
     "auto_adjust":True,
     "actions":True,
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     with open('data/sp500_tickers.json', 'r') as f:
         ticker_dict = json.load(f)
 
-    tickers = list(ticker_dict.values())[:20]
+    tickers = list(ticker_dict.values())
    
     if (args[1] == '-collect') or (args[1]== '--c'):
         collect_tickers(tickers, yf_params)
