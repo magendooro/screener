@@ -1,8 +1,6 @@
 import sys
 import os
 import json
-import urllib
-
 
 import pandas as pd
 import yfinance as yf 
@@ -18,7 +16,7 @@ from tqdm import tqdm
 yf_params = {
     "interval":'1d',
     "start" : datetime.date(2019,1,1),
-    "end" : datetime.date.today() - datetime.timedelta(days = 7),
+    "end" : datetime.date.today(),
     "group_by":'ticker',
     "auto_adjust":True,
     "actions":True,
@@ -39,17 +37,19 @@ def collect_tickers(tickers, params: dict = None, timeout:float = 1) -> None:
     tickers_obj = yf.Tickers(tickers)
     collected_data = tickers_obj.download(**params)
     
-    ticker_dict = tickers_obj.tickers.keys()
+    ticker_dict = tickers_obj.tickers
     
     print()
     print('Saving tickers to their corresponding files...')
     
-    for ticker in tqdm(list(ticker_dict)):
+    for ticker in tqdm(list(ticker_dict.keys())):
         ticker_path = TICKER_FOLDER + ticker + '.csv'
         data_subset = collected_data[ticker]
         data_subset.reset_index(inplace = True)
         data_subset = data_subset.assign(Symbol = ticker)
-        data_subset.to_csv(ticker_path, index = False)
+        # Hopefully the following condition sorts out the empty subset problem...
+        if not data_subset.loc[:, data_subset.columns.difference(['Date', 'Symbol'])].empty: 
+            data_subset.to_csv(ticker_path, index = False)
     
 
 def update_tickers(params, timeout:float = 0):
