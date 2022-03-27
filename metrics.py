@@ -1,3 +1,4 @@
+
 import dask.dataframe as dd
 import pandas as pd
 from talib import WILLR
@@ -6,7 +7,7 @@ from talib import EMA
 TICKER_FOLDER = 'data/tickers/'
 
 def read_all_tickers(folder_path):
-    ddf = dd.read_csv(f"{folder_path}/*.csv")
+    ddf = dd.read_csv(f"{folder_path}/*.csv", assume_missing = True)
     df = ddf.compute()
     return df
 
@@ -33,3 +34,4 @@ def calculate_metrics(df, will_r_timeperiod = 21, ema_timeperiod = 13):
 
 if __name__ == '__main__':
     pass
+
