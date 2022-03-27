@@ -47,8 +47,9 @@ def collect_tickers(tickers, params: dict = None, timeout:float = 1) -> None:
         data_subset = collected_data[ticker]
         data_subset.reset_index(inplace = True)
         data_subset = data_subset.assign(Symbol = ticker)
+        
         # Hopefully the following condition sorts out the empty subset problem...
-        if not data_subset.loc[:, data_subset.columns.difference(['Date', 'Symbol'])].empty: 
+        if not data_subset.loc[:, data_subset.columns.difference(['Date', 'Symbol'])].isna().all().all(): 
             data_subset.to_csv(ticker_path, index = False)
     
 
