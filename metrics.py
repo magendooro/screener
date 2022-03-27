@@ -4,6 +4,7 @@ import dask.dataframe as ddf
 import pandas as pd
 from talib import WILLR
 from talib import EMA
+import copy
 #%%
 
 TICKER_FOLDER = 'data/tickers/'
@@ -15,7 +16,7 @@ def read_all_tickers(folder_path):
 #%%
 def calculate_metrics(df, will_r_timeperiod = 21, ema_timeperiod = 13):
     tickers = df.Symbol.unique()
-
+    df = copy.deepcopy(df)
     df.sort_values(by = ['Symbol', 'Date'], ascending=[True, True], inplace = True)
     df.reset_index(inplace = True)
     
@@ -36,6 +37,8 @@ def calculate_metrics(df, will_r_timeperiod = 21, ema_timeperiod = 13):
 #%%
 def check_gains(df, timeframe = 1):
     tickers = df.Symbol.unique()
+    df = copy.deepcopy(df)
+
     df.sort_values(by = ['Symbol', 'Date'], ascending=[True, True], inplace = True)
     df.reset_index(inplace = True)
 

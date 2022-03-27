@@ -30,6 +30,7 @@ def get_hist_data(ticker: str, params: dict = None) -> pd.DataFrame:
     df['Symbol'] = ticker
     return df
 
+
 def collect_tickers(tickers, params: dict = None, timeout:float = 1) -> None:
     if not os.path.exists(TICKER_FOLDER):
         os.makedirs(TICKER_FOLDER)
@@ -50,6 +51,12 @@ def collect_tickers(tickers, params: dict = None, timeout:float = 1) -> None:
         # Hopefully the following condition sorts out the empty subset problem...
         if not data_subset.loc[:, data_subset.columns.difference(['Date', 'Symbol'])].empty: 
             data_subset.to_csv(ticker_path, index = False)
+
+    print('Accesing S&P index..')
+    snp_obj = yf.Ticker('^GSPC')
+    snp_data = snp_obj.history(**yf_params).reset_index()
+    snp_data.to_csv('data/snp_perf.csv', index = False)
+
     
 
 def update_tickers(params, timeout:float = 0):
@@ -88,7 +95,12 @@ def update_tickers(params, timeout:float = 0):
         except:
             print(f"Couldn't update {ticker}...")
 
-
+    params["start"] = datetime.date(2019,1,1)
+    params['end'] = datetime.date.today()
+    print('Accesing S&P index..')
+    snp_obj = yf.Ticker('^GSPC')
+    snp_data = snp_obj.history(**yf_params).reset_index()
+    snp_data.to_csv('data/snp_perf.csv', index = False)
         
 
 if __name__ == "__main__":
