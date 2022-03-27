@@ -1,20 +1,31 @@
 from operator import index
 import streamlit as st
 import pandas as pd
+from bokeh.plotting import figure
+
 from datetime import date
 from metrics import calculate_metrics, read_all_tickers
 import seaborn as sns
 import matplotlib.pyplot as plt
 from pandas.core.common import SettingWithCopyWarning
 from metrics import read_all_tickers
+from metrics import check_gains
 import warnings
+import copy
 
 warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
 
-plt.style.use('dark_background')
+@st.cache
+def read_data():
+    data = read_all_tickers('data/tickers/')
+    data.Date = data.Date.apply(lambda x: date.fromisoformat(x))
+    return data
 
-data = read_all_tickers('data/tickers/')
-data.Date = data.Date.apply(lambda x: date.fromisoformat(x))
+
+@st.cache
+def update_gains(data, timeframe = 1):
+    return check_gains(data, timeframe)
+
 
 @st.cache
 def update_data(data, williams_choice, ema_choice):
@@ -22,16 +33,66 @@ def update_data(data, williams_choice, ema_choice):
         will_r_timeperiod=williams_choice,
         ema_timeperiod=ema_choice)
 
+
+
+plt.style.use('dark_background')
+data = copy.deepcopy(read_data())
+snp_data = pd.read_csv('data/snp_perf.csv')
+snp_data.Date = snp_data.Date.apply(lambda x: date.fromisoformat(x))
+
 intro = st.container()
-intro.title("S&P500 metrics")
+intro.title("S&P500 Screener")
     
 # Num tickers/timeframe 
 dataset_info = st.container()
 with dataset_info:
-    st.text(f"The dataset contains daily financial data for {len(data.Symbol.unique())} unique tickers for the timeframe: {data.Date.min()} — {data.Date.max()}")
-    st.text(f"Sample from the dataset:")
-    st.write(data.head(3))
+    st.markdown(f"The dataset contains daily financial data for **{len(data.Symbol.unique())}** unique tickers.")
+    st.markdown(f"The included tickers span from **{data.Date.min()}** to **{data.Date.max()}**")
+    
+    st.markdown('S&P500 index:')
+    x = snp_data.Date
+    y = snp_data.Close
+    p = figure(title = 'S&P Performance',
+        x_axis_label = 'Date',
+        y_axis_label = 'Close',
+        x_axis_type ='datetime',
+        plot_width = 800,
+        plot_height = 200,
+        tools = 'wheel_zoom, pan, reset')
+    
+    p.line(x, y,  line_width=2)
+    p.toolbar.active_scroll = "auto"
+    
+    st.bokeh_chart(p, use_container_width=True)
+gains_section = st.container()
 
+with gains_section:
+    st.header('Gains and losses')
+    st.caption('Largest gains and losses in a given timeframe.')
+    gains_columns = st.columns(2)
+    with gains_columns[0]:
+        gains_selection = st.select_slider(label = 'Timeframe', options = ['daily', 'weekly', 'monthly'])
+    
+    if gains_selection == 'daily':
+        gains_df = update_gains(data, 1)
+    elif gains_selection == 'weekly':
+        gains_df = update_gains(data, 7)
+    elif gains_selection == 'monthly':
+        gains_df = update_gains(data, 1)
+    gdf = gains_df.loc[gains_df.Date == gains_df.Date.max()].loc[:, ['Symbol', 'Close', 'Gains/Losses' ]].sort_values(by = 'Gains/Losses', ascending = False)
+
+
+    top_decrease = gdf.iloc[-5:]
+    top_increase = gdf.iloc[:5]
+    loss_columns = st.columns(len(top_decrease))
+    gains_columns = st.columns(len(top_increase))
+
+
+    for i in reversed(range(len(top_increase))):
+        loss_columns[i].metric(label = top_increase.iloc[i]['Symbol'], value = round(top_increase.iloc[i]['Close'],4), delta = str(round(top_increase.iloc[i]['Gains/Losses'], 3) * 100) + '%')
+
+    for i in reversed(range(len(top_decrease))):
+        gains_columns[i].metric(label = top_decrease.iloc[i]['Symbol'], value = round(top_decrease.iloc[i]['Close'], 4), delta = str(round(top_decrease.iloc[i]['Gains/Losses'], 3) * 100) + '%')
 
 # User input and display tickers that satisfy the condition
 parameter_selection = st.container()
@@ -40,23 +101,24 @@ with parameter_selection:
     williams_choice = st.slider(label = 'Williams R period', min_value=5, max_value = 100, value = 21)
     ema_choice = st.slider(label = 'EMA for Williams', min_value=3, max_value = 100, value = 13)
     st.header("Ranges of interest")
-    st.text("""
+    st.caption("""
     Williams %R moves between 0 and -100. 
     Generally, a reading above -20 is overbought,
     and a reading below -80 is oversold. However, these can be picked on a use-case basis as well.
     """)
     filter_indep = st.checkbox(label = 'Filter independently')
-    st.write(filter_indep)
+    
     updated_data = update_data(data, williams_choice, ema_choice)
     col1, col2 = st.columns(2)
     # col1.subheader('Williams %R')
     # col2.subheader('EMA')
     
-    will_lower_thresh = col1.number_input(label = "Williams %R lower bound", value = -80, min_value = -100, max_value = 0)
-    will_upper_thresh = col1.number_input(label = "Williams %R upper bound", value = -20, min_value = -100, max_value = 0)
+    will_lower_thresh, will_upper_thresh = col1.select_slider(label = 'Williams %R range', options = range(-100, 1, 1), value = (-80, -20))
     
-    ema_lower_thresh = col2.number_input(label = "EMA lower bound", value = -80, min_value = -100, max_value = 0)
-    ema_upper_thresh = col2.number_input(label = "EMA upper bound", value = -20, min_value = -100, max_value = 0)
+    ema_lower_thresh, ema_upper_thresh = col2.select_slider(label = 'EMA range', options = range(-100, 1, 1), value = (-80, -20))
+   
+   
+
 
 
 # Filter
@@ -73,7 +135,7 @@ with filtered:
     date_filtered_data = updated_data.loc[updated_data.Date == date_selection]
 
 # Filtering results
-    
+
 if not filter_indep:
     thresh_filtered = date_filtered_data.loc[
             ((date_filtered_data.WillR > will_lower_thresh) & (date_filtered_data.WillR < will_upper_thresh)) &
@@ -94,7 +156,7 @@ with filtered:
 
 
 st.caption(f"The table below can be sorted by clicking on the column header.")
-st.write(thresh_filtered[['Date', 'Symbol', 'WillR', 'WillR_EMA', 'Close']])
+st.dataframe(thresh_filtered[['Date', 'Symbol', 'WillR', 'WillR_EMA', 'Close']])
 
 
 
