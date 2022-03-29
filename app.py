@@ -3,13 +3,15 @@ import streamlit as st
 import pandas as pd
 from bokeh.plotting import figure
 
-from datetime import date
+import datetime
 from metrics import calculate_metrics, read_all_tickers
 import seaborn as sns
 import matplotlib.pyplot as plt
 from pandas.core.common import SettingWithCopyWarning
 from metrics import read_all_tickers
 from metrics import check_gains
+
+from patterns import find_w_pattern
 import warnings
 import copy
 
@@ -18,7 +20,7 @@ warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
 @st.cache
 def read_data():
     data = read_all_tickers('data/tickers/')
-    data.Date = data.Date.apply(lambda x: date.fromisoformat(x))
+    data.Date = data.Date.apply(lambda x: datetime.date.fromisoformat(x))
     return data
 
 
@@ -38,7 +40,7 @@ def update_data(data, williams_choice, ema_choice):
 plt.style.use('dark_background')
 data = copy.deepcopy(read_data())
 snp_data = pd.read_csv('data/snp_perf.csv')
-snp_data.Date = snp_data.Date.apply(lambda x: date.fromisoformat(x))
+snp_data.Date = snp_data.Date.apply(lambda x: datetime.date.fromisoformat(x))
 
 intro = st.container()
 intro.title("S&P500 Screener")
@@ -56,6 +58,7 @@ with dataset_info:
         x_axis_label = 'Date',
         y_axis_label = 'Close',
         x_axis_type ='datetime',
+        
         plot_width = 800,
         plot_height = 200,
         tools = 'wheel_zoom, pan, reset')
@@ -172,7 +175,7 @@ with exploration:
     with date_col1:
         date_lower = st.date_input(
             label = 'From',
-            value = updated_data.Date.min(),
+            value = datetime.date.today() - datetime.timedelta(days = 60),
             min_value = updated_data.Date.min(),
             max_value = updated_data.Date.max())
     with date_col2:
@@ -209,6 +212,34 @@ with exploration:
     plt.xticks(rotation = 45)
     st.pyplot(fig)
 
+    close_p = figure(title = f"Closing price data for ${exploration_choice}",
+        x_axis_label = 'Date',
+        y_axis_label = 'Close',
+        x_axis_type ='datetime',
+        plot_width = 1000,
+        plot_height = 200,
+        tools = 'wheel_zoom, pan, reset')
+    close_p.line(x = subset.Date, y = subset['Close'], line_width = 1)
+
+    will_ema_p = figure(title = f"Williams %R data for ${exploration_choice}",
+        x_axis_label = 'Date',
+        y_axis_label = 'Williams %R',
+        x_axis_type ='datetime',
+        plot_width = 1000,
+        plot_height = 200,
+        tools = 'wheel_zoom, pan, reset')
+    will_ema_p.line(x = subset.Date, y = subset['WillR'], line_width = 1, color = 'magenta', legend_label = 'Williams %R')
+    will_ema_p.line(x = subset.Date, y = subset['WillR_EMA'], line_width = 1, color = 'black', legend_label = f"EMA {ema_choice}")
+    will_ema_p.legend.location = 'top_left'
+    st.bokeh_chart(close_p,  use_container_width = True)
+    st.bokeh_chart(will_ema_p,  use_container_width = True)
+
+    pattern_close = find_w_pattern(subset, column_of_interest='Close')
+    pattern_will = find_w_pattern(subset, column_of_interest='WillR')
+    st.text('Patterns in the closing price')
+    st.bokeh_chart(pattern_close, use_container_width = True)
+    st.text('Patterns in Williams %R')
+    st.bokeh_chart(pattern_will, use_container_width = True)
 
 
 
