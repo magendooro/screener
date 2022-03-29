@@ -121,7 +121,7 @@ with parameter_selection:
     
     will_lower_thresh, will_upper_thresh = col1.select_slider(label = 'Williams %R range', options = range(-100, 1, 1), value = (-80, -20))
     
-    ema_lower_thresh, ema_upper_thresh = col2.select_slider(label = 'EMA range', options = range(-100, 1, 1), value = (-80, -20))
+    ema_lower_thresh, ema_upper_thresh = col2.select_slider(label = 'EMA range', options = range(-100, 1, 1), value = (-100, -70))
    
    
 
