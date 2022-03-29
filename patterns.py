@@ -42,7 +42,7 @@ def find_w_pattern(subset, column_of_interest = "Close"):
     #     plt.text(x = db.index[0], y = db.values[0] * .98, s = str(i))
     #     i+=1
         
-    p = figure(title = 'W patterns',
+    p = figure(title = f'W patterns in {column_of_interest}',
         x_axis_label = 'Date',
         y_axis_label = 'W%R',
         x_axis_type ='datetime',
@@ -56,7 +56,7 @@ def find_w_pattern(subset, column_of_interest = "Close"):
     p.circle(x = subset.Date.iloc[bottoms], y = subset[column_of_interest].iloc[bottoms], size = 5, color = 'red', alpha = .5)
     idx = len(mod_db)
     for db in mod_db:
-        p.line(x = subset.Date.iloc[db.index], y = db.values, color = 'purple')
+        p.line(x = subset.Date.iloc[db.index], y = db.values, color = 'magenta')
         w_begin = Span(location = subset.Date.iloc[db.index[0]], dimension = 'width', line_color='#009E73',
                               line_dash='dashed', line_width=3 )
         w_end = Span(location = subset.Date.iloc[db.index[-1]], dimension = 'width', line_color='#009E73',
