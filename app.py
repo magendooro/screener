@@ -3,22 +3,27 @@ import streamlit as st
 import pandas as pd
 from bokeh.plotting import figure
 
-from datetime import date
+
+import datetime
 from metrics import calculate_metrics, read_all_tickers
 import seaborn as sns
 import matplotlib.pyplot as plt
 from pandas.core.common import SettingWithCopyWarning
 from metrics import read_all_tickers
 from metrics import check_gains
+
+from patterns import find_w_pattern
 import warnings
 import copy
 
 warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
 
+day_mark_90 = datetime.date.today() - datetime.timedelta(days = 90)
+
 @st.cache
 def read_data():
     data = read_all_tickers('data/tickers/')
-    data.Date = data.Date.apply(lambda x: date.fromisoformat(x))
+    data.Date = data.Date.apply(lambda x: datetime.date.fromisoformat(x))
     return data
 
 
@@ -38,7 +43,7 @@ def update_data(data, williams_choice, ema_choice):
 plt.style.use('dark_background')
 data = copy.deepcopy(read_data())
 snp_data = pd.read_csv('data/snp_perf.csv')
-snp_data.Date = snp_data.Date.apply(lambda x: date.fromisoformat(x))
+snp_data.Date = snp_data.Date.apply(lambda x: datetime.date.fromisoformat(x))
 
 intro = st.container()
 intro.title("S&P500 Screener")
@@ -50,12 +55,13 @@ with dataset_info:
     st.markdown(f"The included tickers span from **{data.Date.min()}** to **{data.Date.max()}**")
     
     st.markdown('S&P500 index:')
-    x = snp_data.Date
-    y = snp_data.Close
+    x = snp_data.loc[snp_data.Date > day_mark_90].Date
+    y = snp_data.loc[snp_data.Date > day_mark_90].Close
     p = figure(title = 'S&P Performance',
         x_axis_label = 'Date',
         y_axis_label = 'Close',
         x_axis_type ='datetime',
+        
         plot_width = 800,
         plot_height = 200,
         tools = 'wheel_zoom, pan, reset')
@@ -172,7 +178,7 @@ with exploration:
     with date_col1:
         date_lower = st.date_input(
             label = 'From',
-            value = updated_data.Date.min(),
+            value = day_mark_90,
             min_value = updated_data.Date.min(),
             max_value = updated_data.Date.max())
     with date_col2:
@@ -182,33 +188,63 @@ with exploration:
             min_value = updated_data.Date.min(),
             max_value = updated_data.Date.max())
 
-    major_ticks = pd.date_range(start = date_lower, end = date_upper, periods = 10)
-    minor_ticks = pd.date_range(start = date_lower, end = date_upper, periods = 20)
-
-    fig, axs = plt.subplots(nrows = 2, ncols = 1,figsize = (15, 5), sharex = True)
     subset = updated_data.loc[(updated_data.Symbol == exploration_choice) & (updated_data.Date > date_lower) & ( updated_data.Date < date_upper)]
-    
-    axs[0].plot(subset.Date, subset.WillR, label = 'W%R')
-    axs[0].plot(subset.Date, subset.WillR_EMA, label = 'EMA')
-    axs[0].set_title('Williams %R and EMA of Williams %R')
-    # axs[0].grid(which='minor', alpha=0.2)
-    axs[0].grid(which='major', alpha=0.8)
-    axs[0].set_xticks(major_ticks)
-    # axs[0].set_xticks(minor_ticks, minor=True)
 
-    axs[1].plot(subset.Date, subset.Close, label = 'Close')
-    axs[1].set_title('Closing price')
-    # axs[1].grid(which='minor', alpha=0.2)
-    axs[1].grid(which='major', alpha=0.8)
-    axs[1].set_xticks(major_ticks)
-    # axs[1].set_xticks(minor_ticks, minor=True)
-    
-    
-    plt.legend()
-    
-    plt.xticks(rotation = 45)
-    st.pyplot(fig)
 
+    # major_ticks = pd.date_range(start = date_lower, end = date_upper, periods = 10)
+    # minor_ticks = pd.date_range(start = date_lower, end = date_upper, periods = 20)
+
+    # fig, axs = plt.subplots(nrows = 2, ncols = 1,figsize = (15, 5), sharex = True)
+    
+    # axs[0].plot(subset.Date, subset.WillR, label = 'W%R')
+    # axs[0].plot(subset.Date, subset.WillR_EMA, label = 'EMA')
+    # axs[0].set_title('Williams %R and EMA of Williams %R')
+    # # axs[0].grid(which='minor', alpha=0.2)
+    # axs[0].grid(which='major', alpha=0.8)
+    # axs[0].set_xticks(major_ticks)
+    # # axs[0].set_xticks(minor_ticks, minor=True)
+
+    # axs[1].plot(subset.Date, subset.Close, label = 'Close')
+    # axs[1].set_title('Closing price')
+    # # axs[1].grid(which='minor', alpha=0.2)
+    # axs[1].grid(which='major', alpha=0.8)
+    # axs[1].set_xticks(major_ticks)
+    # # axs[1].set_xticks(minor_ticks, minor=True)
+    
+    
+    # plt.legend()
+    
+    # plt.xticks(rotation = 45)
+    # st.pyplot(fig)
+
+    close_p = figure(title = f"Closing price data for ${exploration_choice}",
+        x_axis_label = 'Date',
+        y_axis_label = 'Close',
+        x_axis_type ='datetime',
+        plot_width = 1000,
+        plot_height = 200,
+        tools = 'wheel_zoom, pan, reset')
+    close_p.line(x = subset.Date, y = subset['Close'], line_width = 1)
+
+    will_ema_p = figure(title = f"Williams %R data for ${exploration_choice}",
+        x_axis_label = 'Date',
+        y_axis_label = 'Williams %R',
+        x_axis_type ='datetime',
+        plot_width = 1000,
+        plot_height = 200,
+        tools = 'wheel_zoom, pan, reset')
+    will_ema_p.line(x = subset.Date, y = subset['WillR'], line_width = 1, color = 'coral', legend_label = 'Williams %R')
+    will_ema_p.line(x = subset.Date, y = subset['WillR_EMA'], line_width = 1, color = 'black', legend_label = f"EMA {ema_choice}", line_dash = 'dashed')
+    will_ema_p.legend.location = 'top_left'
+    st.bokeh_chart(close_p,  use_container_width = True)
+    st.bokeh_chart(will_ema_p,  use_container_width = True)
+
+    pattern_close = find_w_pattern(subset, column_of_interest='Close')
+    pattern_will = find_w_pattern(subset, column_of_interest='WillR')
+
+    st.bokeh_chart(pattern_close, use_container_width = True)
+
+    st.bokeh_chart(pattern_will, use_container_width = True)
 
 
 
