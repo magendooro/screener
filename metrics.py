@@ -54,26 +54,19 @@ def check_gains(df, timeframe = 1):
     new_df = pd.concat(updated_dfs, ignore_index=True)
     return new_df
 
+def calculate_a_per_d(df):
+    df = copy.deepcopy(df)
+    df.sort_values(by = ['Symbol', 'Date'], ascending=[True, True], inplace = True)
+    grouped = df.groupby('Symbol')
+    df['Change'] = grouped.Close.pct_change().apply(lambda x: 1 if x > 0 else -1)
+    daily_NA = df.groupby(by = 'Date').Change.sum()
+    a_per_d = daily_NA.rolling(2).sum()
+    a_per_d = pd.DataFrame(a_per_d).reset_index()
+    a_per_d.columns = ['Date', 'A/D']
+    return a_per_d
 
 if __name__ == '__main__':
     pass
 
-#%%
-# data = read_all_tickers('data/tickers')
-
-
-# # %%
-# g = check_gains(data)
-# # %%
-# gdf = g.loc[g.Date == g.Date.max()].loc[:, ['Symbol', 'Gains/Losses']].sort_values(by = 'Gains/Losses', ascending = True)
-# top_decrease = gdf.iloc[:10]
-# top_increase = gdf.iloc[-10:]
-# # %%
-# top_increase
-# # %%
-
-# for i in range(len(top_increase)):
-#     print(top_increase.iloc[i]['Symbol'])
-# # %%
-# top_decrease.style.format({'Gains/Losses': '{:,.2%}'})
 # %%
+
