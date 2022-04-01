@@ -54,37 +54,18 @@ def check_gains(df, timeframe = 1):
     new_df = pd.concat(updated_dfs, ignore_index=True)
     return new_df
 
+def calculate_a_per_d(df):
+    df = copy.deepcopy(df)
+    df.sort_values(by = ['Symbol', 'Date'], ascending=[True, True], inplace = True)
+    grouped = df.groupby('Symbol')
+    df['Change'] = grouped.Close.pct_change().apply(lambda x: 1 if x > 0 else -1)
+    daily_NA = df.groupby(by = 'Date').Change.sum()
+    a_per_d = daily_NA.rolling(2).sum()
+    return a_per_d 
 
 if __name__ == '__main__':
     pass
 
-#%%
-data = read_all_tickers('data/tickers')
-
 # %%
-data
-# %%
-tickers = data.Symbol.unique()
-data.sort_values(by = ['Symbol', 'Date'], ascending=[True, True], inplace = True)
-updated_dfs = []
-for ticker in tickers:
-    subset_of_interest = data.loc[data['Symbol'] == ticker]
-    subset_len = len(subset_of_interest)
-    subset_of_interest.assign(Daily_change = subset_of_interest.Close.pct_change(periods = 1), inplace = True)
-    net_advance = subset_of_interest['Daily_change'].apply(lambda x: 1 if x > 0 else -1)
 
-    updated_dfs.append(subset_of_interest)
-
-new_df = pd.concat(updated_dfs, ignore_index = True)
-    
-
-# %%
-subset = data.loc[:['MSFT', 'AAPL', 'FB']]
- # %%
-subset
-# %%
-subset['Close_change'] = subset.Close.pct_change()
-
-# %%
-subset.Close_change.apply(lambda x: 1 if x > 0 else -1) 
 # %%
