@@ -20,6 +20,13 @@ warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
 
 day_mark_90 = datetime.date.today() - datetime.timedelta(days = 90)
 
+@st.cache 
+def get_industries():
+    ticker_data = pd.read_csv('data/sp500.csv')
+    return ticker_data['GICS Sector'].unique()
+    
+st.write(get_industries())
+
 @st.cache
 def read_data():
     data = read_all_tickers('data/tickers/')
@@ -57,7 +64,7 @@ with dataset_info:
     st.markdown(f"The included tickers span from **{data.Date.min()}** to **{data.Date.max()}**")
     
     st.markdown('S&P500 index:')
-    snp_date_lower, snp_date_upper = st.date_input(label = 'Select the daterange of interest.', value = (snp_data.Date.max() - datetime.timedelta(days = 180), snp_data.Date.max()), min_value =  snp_data.Date.min(), max_value = snp_data.Date.max())
+    snp_date_lower, snp_date_upper = st.date_input(label = 'Select the date range of interest.', value = (snp_data.Date.max() - datetime.timedelta(days = 180), snp_data.Date.max()), min_value =  snp_data.Date.min(), max_value = snp_data.Date.max())
     date_mask = (snp_data['Date'] > snp_date_lower) & (snp_data['Date'] < snp_date_upper)
     x = snp_data.loc[date_mask].Date
     y = snp_data.loc[date_mask].Close

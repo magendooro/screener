@@ -1,3 +1,4 @@
+#%%
 import sys
 import os
 import json
@@ -11,7 +12,7 @@ import time
 from tqdm import tqdm
 
 # yf.pdr_override()
-
+#%%
 
 yf_params = {
     "interval":'1d',
@@ -24,7 +25,7 @@ yf_params = {
 }
 
 TICKER_FOLDER = 'data/tickers/'
-
+#%%
 def get_hist_data(ticker: str, params: dict = None) -> pd.DataFrame:
     df = dtr.get_data_yahoo(symbols = ticker, **params)
     df['Symbol'] = ticker
@@ -103,18 +104,22 @@ def update_tickers(params, timeout:float = 0):
     snp_data = snp_obj.history(**yf_params).reset_index()
     snp_data.to_csv('data/snp_perf.csv', index = False)
         
-
+#%%
 if __name__ == "__main__":
     args = sys.argv
-    with open('data/sp500_tickers.json', 'r') as f:
-        ticker_dict = json.load(f)
+    # with open('data/sp500_tickers.json', 'r') as f:
+    #     ticker_dict = json.load(f)
+    tickers = pd.read_csv('data/sp500.csv')
+    tickers = list(tickers.Symbol)
 
-    tickers = list(ticker_dict.values())
-   
     if (args[1] == '-collect') or (args[1]== '--c'):
         collect_tickers(tickers, yf_params)
     elif (args[1] == '-update') or (args[1]== '--u'):
         update_tickers(yf_params)
     else: 
         print('Invalid argument..')
-    
+
+#%%
+tickers
+
+# %%
