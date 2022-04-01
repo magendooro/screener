@@ -79,6 +79,12 @@ new_df = pd.concat(updated_dfs, ignore_index = True)
     
 
 # %%
-subset_of_interest
+subset = data.loc[:['MSFT', 'AAPL', 'FB']]
+ # %%
+subset
 # %%
-net_advance  = 
+subset['Close_change'] = subset.Close.pct_change()
+
+# %%
+subset.Close_change.apply(lambda x: 1 if x > 0 else -1) 
+# %%
