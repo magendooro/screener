@@ -63,6 +63,9 @@ def calculate_a_per_d(df):
     a_per_d = daily_NA.rolling(2).sum()
     a_per_d = pd.DataFrame(a_per_d).reset_index()
     a_per_d.columns = ['Date', 'A/D']
+    for ema in [3,7,10]:
+        a_per_d[f'EMA_{ema}'] = EMA(a_per_d['A/D'], timeperiod = ema)
+           
     return a_per_d
 
 if __name__ == '__main__':

@@ -86,7 +86,15 @@ with dataset_info:
         plot_height = 200,
         tools = 'wheel_zoom, pan, reset')
     
-    p.line(x, y,  line_width=1, alpha = .8, color = 'coral', line_dash = 'dashed')
+    p.line(x, y,  line_width=1, color = 'coral')
+
+    y = snp_AD.loc[date_mask]['EMA_3']
+    p.line(x, y,  line_width=2, color = 'green', alpha = 1, legend_label = 'EMA(3)', line_dash = 'dashed')
+    y = snp_AD.loc[date_mask]['EMA_7']
+    p.line(x, y,  line_width=2, color = 'cyan', alpha = 1, legend_label = 'EMA(7)', line_dash = 'dotdash')
+    y = snp_AD.loc[date_mask]['EMA_10']
+    p.line(x, y,  line_width=2, color = 'purple', alpha = 1, legend_label = 'EMA(10)', line_dash = 'dotted')
+    p.legend.location = 'top_left'
     p.toolbar.active_scroll = "auto"
     st.bokeh_chart(p, use_container_width=True)
     st.caption(body = 'The A/D line can be interpreted as an indicator that shows the trend for a majority of stocks.')
