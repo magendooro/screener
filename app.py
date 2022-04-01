@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from pandas.core.common import SettingWithCopyWarning
 from metrics import read_all_tickers
 from metrics import check_gains
-
+from metrics import calculate_a_per_d
 from patterns import find_w_pattern
 import warnings
 import copy
@@ -26,7 +26,6 @@ def read_data():
     data.Date = data.Date.apply(lambda x: datetime.date.fromisoformat(x))
     return data
 
-
 @st.cache
 def update_gains(data, timeframe = 1):
     return check_gains(data, timeframe)
@@ -38,12 +37,15 @@ def update_data(data, williams_choice, ema_choice):
         will_r_timeperiod=williams_choice,
         ema_timeperiod=ema_choice)
 
-
+@st.cache
+def get_a_and_d(data):
+    return calculate_a_per_d(data)
 
 plt.style.use('dark_background')
 data = copy.deepcopy(read_data())
 snp_data = pd.read_csv('data/snp_perf.csv')
 snp_data.Date = snp_data.Date.apply(lambda x: datetime.date.fromisoformat(x))
+snp_AD = get_a_and_d(data)
 
 intro = st.container()
 intro.title("S&P500 Screener")
@@ -55,8 +57,10 @@ with dataset_info:
     st.markdown(f"The included tickers span from **{data.Date.min()}** to **{data.Date.max()}**")
     
     st.markdown('S&P500 index:')
-    x = snp_data.loc[snp_data.Date > day_mark_90].Date
-    y = snp_data.loc[snp_data.Date > day_mark_90].Close
+    snp_date_lower, snp_date_upper = st.date_input(label = 'Select the daterange of interest.', value = (snp_data.Date.max() - datetime.timedelta(days = 180), snp_data.Date.max()), min_value =  snp_data.Date.min(), max_value = snp_data.Date.max())
+    date_mask = (snp_data['Date'] > snp_date_lower) & (snp_data['Date'] < snp_date_upper)
+    x = snp_data.loc[date_mask].Date
+    y = snp_data.loc[date_mask].Close
     p = figure(title = 'S&P Performance',
         x_axis_label = 'Date',
         y_axis_label = 'Close',
@@ -70,6 +74,24 @@ with dataset_info:
     p.toolbar.active_scroll = "auto"
     
     st.bokeh_chart(p, use_container_width=True)
+
+    x = snp_AD.loc[date_mask].Date
+    y = snp_AD.loc[date_mask]['A/D']
+    p = figure(title = 'A/D line',
+        x_axis_label = 'Date',
+        y_axis_label = 'A/D value',
+        x_axis_type ='datetime',
+        
+        plot_width = 800,
+        plot_height = 200,
+        tools = 'wheel_zoom, pan, reset')
+    
+    p.line(x, y,  line_width=1, alpha = .8, color = 'coral', line_dash = 'dashed')
+    p.toolbar.active_scroll = "auto"
+    st.bokeh_chart(p, use_container_width=True)
+    st.caption(body = 'The A/D line can be interpreted as an indicator that shows the trend for a majority of stocks.')
+
+
 gains_section = st.container()
 
 with gains_section:
@@ -133,7 +155,7 @@ with filtered:
     st.header('Tickers of interest')
     col1_t, col2_t = st.columns(2)
     with col1_t:
-        date_selection = st.date_input(
+            date_selection = st.date_input(
             label = 'Consider Williams %R on this day',
             value = data.Date.max(),
             min_value = data.Date.min(),

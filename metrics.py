@@ -61,11 +61,12 @@ def calculate_a_per_d(df):
     df['Change'] = grouped.Close.pct_change().apply(lambda x: 1 if x > 0 else -1)
     daily_NA = df.groupby(by = 'Date').Change.sum()
     a_per_d = daily_NA.rolling(2).sum()
-    return a_per_d 
+    a_per_d = pd.DataFrame(a_per_d).reset_index()
+    a_per_d.columns = ['Date', 'A/D']
+    return a_per_d
 
 if __name__ == '__main__':
     pass
 
 # %%
 
-# %%
