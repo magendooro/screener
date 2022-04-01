@@ -59,21 +59,26 @@ if __name__ == '__main__':
     pass
 
 #%%
-# data = read_all_tickers('data/tickers')
+data = read_all_tickers('data/tickers')
 
-
-# # %%
-# g = check_gains(data)
-# # %%
-# gdf = g.loc[g.Date == g.Date.max()].loc[:, ['Symbol', 'Gains/Losses']].sort_values(by = 'Gains/Losses', ascending = True)
-# top_decrease = gdf.iloc[:10]
-# top_increase = gdf.iloc[-10:]
-# # %%
-# top_increase
-# # %%
-
-# for i in range(len(top_increase)):
-#     print(top_increase.iloc[i]['Symbol'])
-# # %%
-# top_decrease.style.format({'Gains/Losses': '{:,.2%}'})
 # %%
+data
+# %%
+tickers = data.Symbol.unique()
+data.sort_values(by = ['Symbol', 'Date'], ascending=[True, True], inplace = True)
+updated_dfs = []
+for ticker in tickers:
+    subset_of_interest = data.loc[data['Symbol'] == ticker]
+    subset_len = len(subset_of_interest)
+    subset_of_interest.assign(Daily_change = subset_of_interest.Close.pct_change(periods = 1), inplace = True)
+    net_advance = subset_of_interest['Daily_change'].apply(lambda x: 1 if x > 0 else -1)
+
+    updated_dfs.append(subset_of_interest)
+
+new_df = pd.concat(updated_dfs, ignore_index = True)
+    
+
+# %%
+subset_of_interest
+# %%
+net_advance  = 
