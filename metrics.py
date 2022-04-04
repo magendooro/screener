@@ -1,5 +1,6 @@
 
 #%%
+from re import A
 import dask.dataframe as ddf
 import pandas as pd
 from talib import WILLR
@@ -54,7 +55,7 @@ def check_gains(df, timeframe = 1):
     new_df = pd.concat(updated_dfs, ignore_index=True)
     return new_df
 
-def calculate_a_per_d(df):
+def calculate_AD(df):
     df = copy.deepcopy(df)
     df.sort_values(by = ['Symbol', 'Date'], ascending=[True, True], inplace = True)
     grouped = df.groupby('Symbol')
@@ -65,8 +66,29 @@ def calculate_a_per_d(df):
     a_per_d.columns = ['Date', 'A/D']
     return a_per_d
 
+def get_companies_by_industry(industry_name: str, ticker_data: pd.DataFrame, companies_in_dataset: list) -> list:
+    companies_of_interest = ticker_data.loc[ticker_data['GICS Sector'] ==  industry_name].Symbol.values
+    valid_companies = set(companies_of_interest).intersection(companies_in_dataset)
+    return list(valid_companies)
+
+def calculate_industries_ads(data):
+    ticker_data = pd.read_csv('data/sp500.csv')
+    unique_industries = ticker_data['GICS Sector'].unique()
+    industries_AD = []
+    overall_AD = calculate_AD(data).set_index('Date')
+    industries_AD.append(overall_AD)
+    for industry in unique_industries:
+        companies = get_companies_by_industry(industry_name=industry, ticker_data = ticker_data, companies_in_dataset = data.Symbol.unique())
+        industry_df = calculate_AD(data.loc[data.Symbol.isin(companies)])
+        industry_df.set_index('Date', inplace = True)
+        industry_df.rename(columns = {'A/D': industry}, inplace = True)
+        industries_AD.append(industry_df)
+
+    industries_df = pd.concat(industries_AD, axis = 1)
+    return industries_df
+#%%
 if __name__ == '__main__':
     pass
 
+# industries_df
 # %%
-

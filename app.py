@@ -1,7 +1,10 @@
 from operator import index
+
+from numpy import insert
 import streamlit as st
 import pandas as pd
 from bokeh.plotting import figure
+from bokeh.palettes import Magma, Inferno, Plasma, Viridis, Cividis
 
 
 import datetime
@@ -11,7 +14,8 @@ import matplotlib.pyplot as plt
 from pandas.core.common import SettingWithCopyWarning
 from metrics import read_all_tickers
 from metrics import check_gains
-from metrics import calculate_a_per_d
+from metrics import calculate_AD
+from metrics import calculate_industries_ads
 from patterns import find_w_pattern
 import warnings
 import copy
@@ -23,9 +27,31 @@ day_mark_90 = datetime.date.today() - datetime.timedelta(days = 90)
 @st.cache 
 def get_industries():
     ticker_data = pd.read_csv('data/sp500.csv')
-    return ticker_data['GICS Sector'].unique()
-    
-st.write(get_industries())
+    return ticker_data
+
+# @st.cache
+# def get_companies_by_industry(industry_name: str, ticker_data: pd.DataFrame, companies_in_dataset: list) -> list:
+#     companies_of_interest = ticker_data.loc[ticker_data['GICS Sector'] ==  industry_name].Symbol.values
+#     valid_companies = set(companies_of_interest).intersection(companies_in_dataset)
+#     return list(valid_companies)
+
+@st.cache
+def calculate_industries_AD(data):
+    return calculate_industries_ads(data)
+    # ticker_data = get_industries()
+    # unique_industries = ticker_data['GICS Sector'].unique()
+
+    # industries_AD = []
+    # overall_AD = get_AD(data).set_index('Date')
+    # industries_AD.append(overall_AD)
+    # for industry in unique_industries:
+    #     companies = get_companies_by_industry(industry_name=industry, ticker_data = ticker_data, companies_in_dataset = data.Symbol.unique())
+    #     industry_df = get_AD(data.loc[data.Symbol.isin(companies)])
+    #     industry_df.rename(columns = {'A/D': industry}, inplace = True)
+    #     industries_AD.append(industry_df)
+
+    # industries_df = pd.concat(industries_AD, axis = 1)
+    # return industries_df
 
 @st.cache
 def read_data():
@@ -45,15 +71,16 @@ def update_data(data, williams_choice, ema_choice):
         ema_timeperiod=ema_choice)
 
 @st.cache
-def get_a_and_d(data):
-    return calculate_a_per_d(data)
+def get_AD(data):
+    return calculate_AD(data)
 
 plt.style.use('dark_background')
 data = copy.deepcopy(read_data())
 snp_data = pd.read_csv('data/snp_perf.csv')
 snp_data.Date = snp_data.Date.apply(lambda x: datetime.date.fromisoformat(x))
-snp_AD = get_a_and_d(data)
 
+snp_AD = get_AD(data)
+industry_ads = calculate_industries_AD(data)
 intro = st.container()
 intro.title("S&P500 Screener")
     
@@ -97,6 +124,20 @@ with dataset_info:
     p.toolbar.active_scroll = "auto"
     st.bokeh_chart(p, use_container_width=True)
     st.caption(body = 'The A/D line can be interpreted as an indicator that shows the trend for a majority of stocks.')
+
+    p = figure(title = 'A/D by industry',
+        x_axis_label = 'Date',
+        y_axis_label = 'A/D value',
+        x_axis_type ='datetime',
+        plot_width = 800,
+        plot_height = 200,
+        tools = 'wheel_zoom, pan, reset')
+    p.multiline(x = industry_ads['Date'], y = industry_ads.drop('Date'))
+    p.toolbar.active_scroll = "auto"
+    
+    
+   
+    # st.bokeh_chart(p, use_container_width=True)
 
 
 gains_section = st.container()
