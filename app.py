@@ -112,11 +112,11 @@ with dataset_info:
     p.line(x, y,  line_width=1, color = 'coral')
 
     y = AD_plus_EMA.loc[date_mask]['EMA_3']
-    p.line(x, y,  line_width=2, color = 'green', alpha = 1, legend_label = 'EMA(3)', line_dash = 'dashed')
+    p.line(x, y,  line_width=2, color = 'green', alpha = 1, legend_label = 'EMA(3)')
     y = AD_plus_EMA.loc[date_mask]['EMA_7']
-    p.line(x, y,  line_width=2, color = 'cyan', alpha = 1, legend_label = 'EMA(7)', line_dash = 'dotdash')
+    p.line(x, y,  line_width=2, color = 'cyan', alpha = 1, legend_label = 'EMA(7)',)
     y = AD_plus_EMA.loc[date_mask]['EMA_10']
-    p.line(x, y,  line_width=2, color = 'purple', alpha = 1, legend_label = 'EMA(10)', line_dash = 'dotted')
+    p.line(x, y,  line_width=2, color = 'purple', alpha = 1, legend_label = 'EMA(10)')
     p.legend.location = 'top_left'
     p.toolbar.active_scroll = "auto"
     st.bokeh_chart(p, use_container_width=True)
