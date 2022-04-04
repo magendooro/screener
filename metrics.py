@@ -62,14 +62,14 @@ def calculate_AD(df):
     daily_NA = df.groupby(by = 'Date').Change.sum()
     a_per_d = daily_NA.rolling(2).sum()
     a_per_d = pd.DataFrame(a_per_d).reset_index()
-    a_per_d.columns = ['Date', 'A/D']
+    a_per_d.columns = ['Date', 'S&P500']
 
     return a_per_d
 
 def calculate_AD_EMA(df):
     a_per_d = copy.deepcopy(df)
     for ema in [3,7,10]:
-        a_per_d[f'EMA_{ema}'] = EMA(a_per_d['A/D'], timeperiod = ema)
+        a_per_d[f'EMA_{ema}'] = EMA(a_per_d['S&P500'], timeperiod = ema)
 
     return a_per_d
 
@@ -88,7 +88,7 @@ def calculate_industries_ads(data):
         companies = get_companies_by_industry(industry_name=industry, ticker_data = ticker_data, companies_in_dataset = data.Symbol.unique())
         industry_df = calculate_AD(data.loc[data.Symbol.isin(companies)])
         industry_df.set_index('Date', inplace = True)
-        industry_df.rename(columns = {'A/D': industry}, inplace = True)
+        industry_df.rename(columns = {'S&P500': industry}, inplace = True)
         industries_AD.append(industry_df)
 
     industries_df = pd.concat(industries_AD, axis = 1)

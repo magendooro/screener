@@ -34,29 +34,11 @@ def get_industries():
     ticker_data = pd.read_csv('data/sp500.csv')
     return ticker_data
 
-# @st.cache
-# def get_companies_by_industry(industry_name: str, ticker_data: pd.DataFrame, companies_in_dataset: list) -> list:
-#     companies_of_interest = ticker_data.loc[ticker_data['GICS Sector'] ==  industry_name].Symbol.values
-#     valid_companies = set(companies_of_interest).intersection(companies_in_dataset)
-#     return list(valid_companies)
 
 @st.cache
 def calculate_industries_AD(data):
     return calculate_industries_ads(data)
-    # ticker_data = get_industries()
-    # unique_industries = ticker_data['GICS Sector'].unique()
-
-    # industries_AD = []
-    # overall_AD = get_AD(data).set_index('Date')
-    # industries_AD.append(overall_AD)
-    # for industry in unique_industries:
-    #     companies = get_companies_by_industry(industry_name=industry, ticker_data = ticker_data, companies_in_dataset = data.Symbol.unique())
-    #     industry_df = get_AD(data.loc[data.Symbol.isin(companies)])
-    #     industry_df.rename(columns = {'A/D': industry}, inplace = True)
-    #     industries_AD.append(industry_df)
-
-    # industries_df = pd.concat(industries_AD, axis = 1)
-    # return industries_df
+    
 
 @st.cache
 def read_data():
@@ -117,7 +99,7 @@ with dataset_info:
 
     AD_plus_EMA = calculate_AD_EMA(snp_AD)
     x = AD_plus_EMA.loc[date_mask].Date
-    y = AD_plus_EMA.loc[date_mask]['A/D']
+    y = AD_plus_EMA.loc[date_mask]['S&P500']
     p = figure(title = 'A/D line',
         x_axis_label = 'Date',
         y_axis_label = 'A/D value',
@@ -161,7 +143,7 @@ with dataset_info:
         if column in industries_selection:
             y = industry_ads[[column]]
             y = scaler.fit_transform(y)
-            if column == 'A/D':
+            if column == 'S&P500':
                 p.line(x, np.squeeze(y), line_width=2, alpha = 1, color = 'black', legend_label = 'S&P500', line_dash = 'dashed')
             else:
                 p.line(x, np.squeeze(y), line_width=2, alpha = .50, color = colors[color_idx], legend_label = column)
@@ -170,7 +152,7 @@ with dataset_info:
     p.legend.location = 'top_left'
    
     st.bokeh_chart(p, use_container_width=True)
-    iads = industry_ads.drop(columns = 'A/D')
+    iads = industry_ads.drop(columns = 'S&P500')
     # st.area_chart(iads, use_container_width = True)
 
     p = figure(title = 'A/D by industry stacked',
@@ -306,33 +288,6 @@ with exploration:
             max_value = updated_data.Date.max())
 
     subset = updated_data.loc[(updated_data.Symbol == exploration_choice) & (updated_data.Date > date_lower) & ( updated_data.Date < date_upper)]
-
-
-    # major_ticks = pd.date_range(start = date_lower, end = date_upper, periods = 10)
-    # minor_ticks = pd.date_range(start = date_lower, end = date_upper, periods = 20)
-
-    # fig, axs = plt.subplots(nrows = 2, ncols = 1,figsize = (15, 5), sharex = True)
-    
-    # axs[0].plot(subset.Date, subset.WillR, label = 'W%R')
-    # axs[0].plot(subset.Date, subset.WillR_EMA, label = 'EMA')
-    # axs[0].set_title('Williams %R and EMA of Williams %R')
-    # # axs[0].grid(which='minor', alpha=0.2)
-    # axs[0].grid(which='major', alpha=0.8)
-    # axs[0].set_xticks(major_ticks)
-    # # axs[0].set_xticks(minor_ticks, minor=True)
-
-    # axs[1].plot(subset.Date, subset.Close, label = 'Close')
-    # axs[1].set_title('Closing price')
-    # # axs[1].grid(which='minor', alpha=0.2)
-    # axs[1].grid(which='major', alpha=0.8)
-    # axs[1].set_xticks(major_ticks)
-    # # axs[1].set_xticks(minor_ticks, minor=True)
-    
-    
-    # plt.legend()
-    
-    # plt.xticks(rotation = 45)
-    # st.pyplot(fig)
 
     close_p = figure(title = f"Closing price data for ${exploration_choice}",
         x_axis_label = 'Date',
