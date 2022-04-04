@@ -1,8 +1,13 @@
 from operator import index
+
+from numpy import insert
 import streamlit as st
 import pandas as pd
 from bokeh.plotting import figure
-
+from bokeh.palettes import Turbo256, Category20, Spectral
+from bokeh.palettes import brewer
+import numpy as np
+from sklearn.preprocessing import MinMaxScaler
 
 import datetime
 from metrics import calculate_metrics, read_all_tickers
@@ -11,7 +16,8 @@ import matplotlib.pyplot as plt
 from pandas.core.common import SettingWithCopyWarning
 from metrics import read_all_tickers
 from metrics import check_gains
-from metrics import calculate_a_per_d
+from metrics import calculate_AD
+from metrics import calculate_industries_ads
 from patterns import find_w_pattern
 import warnings
 import copy
@@ -19,6 +25,35 @@ import copy
 warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
 
 day_mark_90 = datetime.date.today() - datetime.timedelta(days = 90)
+
+@st.cache 
+def get_industries():
+    ticker_data = pd.read_csv('data/sp500.csv')
+    return ticker_data
+
+# @st.cache
+# def get_companies_by_industry(industry_name: str, ticker_data: pd.DataFrame, companies_in_dataset: list) -> list:
+#     companies_of_interest = ticker_data.loc[ticker_data['GICS Sector'] ==  industry_name].Symbol.values
+#     valid_companies = set(companies_of_interest).intersection(companies_in_dataset)
+#     return list(valid_companies)
+
+@st.cache
+def calculate_industries_AD(data):
+    return calculate_industries_ads(data)
+    # ticker_data = get_industries()
+    # unique_industries = ticker_data['GICS Sector'].unique()
+
+    # industries_AD = []
+    # overall_AD = get_AD(data).set_index('Date')
+    # industries_AD.append(overall_AD)
+    # for industry in unique_industries:
+    #     companies = get_companies_by_industry(industry_name=industry, ticker_data = ticker_data, companies_in_dataset = data.Symbol.unique())
+    #     industry_df = get_AD(data.loc[data.Symbol.isin(companies)])
+    #     industry_df.rename(columns = {'A/D': industry}, inplace = True)
+    #     industries_AD.append(industry_df)
+
+    # industries_df = pd.concat(industries_AD, axis = 1)
+    # return industries_df
 
 @st.cache
 def read_data():
@@ -38,15 +73,16 @@ def update_data(data, williams_choice, ema_choice):
         ema_timeperiod=ema_choice)
 
 @st.cache
-def get_a_and_d(data):
-    return calculate_a_per_d(data)
+def get_AD(data):
+    return calculate_AD(data)
 
 plt.style.use('dark_background')
 data = copy.deepcopy(read_data())
 snp_data = pd.read_csv('data/snp_perf.csv')
 snp_data.Date = snp_data.Date.apply(lambda x: datetime.date.fromisoformat(x))
-snp_AD = get_a_and_d(data)
 
+snp_AD = get_AD(data)
+industry_ads = calculate_industries_AD(data)
 intro = st.container()
 intro.title("S&P500 Screener")
     
@@ -57,10 +93,11 @@ with dataset_info:
     st.markdown(f"The included tickers span from **{data.Date.min()}** to **{data.Date.max()}**")
     
     st.markdown('S&P500 index:')
-    snp_date_lower, snp_date_upper = st.date_input(label = 'Select the daterange of interest.', value = (snp_data.Date.max() - datetime.timedelta(days = 180), snp_data.Date.max()), min_value =  snp_data.Date.min(), max_value = snp_data.Date.max())
+    snp_date_lower, snp_date_upper = st.date_input(label = 'Select the date range of interest.', value = (snp_data.Date.max() - datetime.timedelta(days = 180), snp_data.Date.max()), min_value =  snp_data.Date.min(), max_value = snp_data.Date.max())
     date_mask = (snp_data['Date'] > snp_date_lower) & (snp_data['Date'] < snp_date_upper)
     x = snp_data.loc[date_mask].Date
     y = snp_data.loc[date_mask].Close
+    industry_ads = industry_ads.loc[(industry_ads.index < snp_date_upper) & (industry_ads.index > snp_date_lower)]
     p = figure(title = 'S&P Performance',
         x_axis_label = 'Date',
         y_axis_label = 'Close',
@@ -98,6 +135,55 @@ with dataset_info:
     p.toolbar.active_scroll = "auto"
     st.bokeh_chart(p, use_container_width=True)
     st.caption(body = 'The A/D line can be interpreted as an indicator that shows the trend for a majority of stocks.')
+
+    st.write()
+
+    industries_selection = st.multiselect(label = 'Industries of interest: ', options = industry_ads.columns, default=industry_ads.columns.values[:5])
+    p = figure(title = 'A/D by industry scaled',
+        x_axis_label = 'Date',
+        y_axis_label = 'A/D value',
+        x_axis_type ='datetime',
+        plot_width = 800,
+        plot_height = 250,
+        tools = 'wheel_zoom, pan, reset')
+    p.toolbar.active_scroll = "auto"
+    x = industry_ads.index
+    scaler = MinMaxScaler()
+    color_idx = 0 
+    color_range = np.linspace(0, 200, len(industries_selection), dtype=np.int64)
+    colors = [Turbo256[idx] for idx in color_range]
+    
+    for column in industry_ads.columns:
+        if column in industries_selection:
+            y = industry_ads[[column]]
+            y = scaler.fit_transform(y)
+            if column == 'A/D':
+                p.line(x, np.squeeze(y), line_width=2, alpha = 1, color = 'black', legend_label = 'S&P500', line_dash = 'dashed')
+            else:
+                p.line(x, np.squeeze(y), line_width=2, alpha = .50, color = colors[color_idx], legend_label = column)
+        color_idx += 1
+    
+    p.legend.location = 'top_left'
+   
+    st.bokeh_chart(p, use_container_width=True)
+    iads = industry_ads.drop(columns = 'A/D')
+    # st.area_chart(iads, use_container_width = True)
+
+    p = figure(title = 'A/D by industry stacked',
+        x_axis_label = 'Date',
+        y_axis_label = 'A/D value',
+        x_axis_type ='datetime',
+        plot_width = 800,
+        plot_height = 400,
+        tools = 'wheel_zoom, pan, reset')
+    
+    p.varea_stack(stackers=industries_selection, x='Date', color = colors, legend_label=industries_selection, source=iads)
+    p.legend.location = 'top_left'
+    p.legend.orientation = 'horizontal'
+    st.bokeh_chart(p, use_container_width=True)
+
+
+
 
 
 gains_section = st.container()
@@ -273,7 +359,6 @@ with exploration:
     pattern_will = find_w_pattern(subset, column_of_interest='WillR')
 
     st.bokeh_chart(pattern_close, use_container_width = True)
-
     st.bokeh_chart(pattern_will, use_container_width = True)
 
 
