@@ -1,11 +1,10 @@
 
 #%%
-from re import A
 import dask.dataframe as ddf
 import pandas as pd
 from talib import WILLR
 from talib import EMA
-import copy
+import copy 
 #%%
 
 TICKER_FOLDER = 'data/tickers/'
@@ -64,9 +63,14 @@ def calculate_AD(df):
     a_per_d = daily_NA.rolling(2).sum()
     a_per_d = pd.DataFrame(a_per_d).reset_index()
     a_per_d.columns = ['Date', 'A/D']
+
+    return a_per_d
+
+def calculate_AD_EMA(df):
+    a_per_d = copy.deepcopy(df)
     for ema in [3,7,10]:
         a_per_d[f'EMA_{ema}'] = EMA(a_per_d['A/D'], timeperiod = ema)
-           
+
     return a_per_d
 
 def get_companies_by_industry(industry_name: str, ticker_data: pd.DataFrame, companies_in_dataset: list) -> list:
@@ -92,6 +96,5 @@ def calculate_industries_ads(data):
 #%%
 if __name__ == '__main__':
     pass
-
-# industries_df
 # %%
+

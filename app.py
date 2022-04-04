@@ -6,6 +6,7 @@ import pandas as pd
 from bokeh.plotting import figure
 from bokeh.palettes import Turbo256, Category20, Spectral
 from bokeh.palettes import brewer
+
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
@@ -16,8 +17,10 @@ import matplotlib.pyplot as plt
 from pandas.core.common import SettingWithCopyWarning
 from metrics import read_all_tickers
 from metrics import check_gains
+from metrics import calculate_AD_EMA
 from metrics import calculate_AD
 from metrics import calculate_industries_ads
+
 from patterns import find_w_pattern
 import warnings
 import copy
@@ -112,8 +115,9 @@ with dataset_info:
     
     st.bokeh_chart(p, use_container_width=True)
 
-    x = snp_AD.loc[date_mask].Date
-    y = snp_AD.loc[date_mask]['A/D']
+    AD_plus_EMA = calculate_AD_EMA(snp_AD)
+    x = AD_plus_EMA.loc[date_mask].Date
+    y = AD_plus_EMA.loc[date_mask]['A/D']
     p = figure(title = 'A/D line',
         x_axis_label = 'Date',
         y_axis_label = 'A/D value',
@@ -125,11 +129,11 @@ with dataset_info:
     
     p.line(x, y,  line_width=1, color = 'coral')
 
-    y = snp_AD.loc[date_mask]['EMA_3']
+    y = AD_plus_EMA.loc[date_mask]['EMA_3']
     p.line(x, y,  line_width=2, color = 'green', alpha = 1, legend_label = 'EMA(3)', line_dash = 'dashed')
-    y = snp_AD.loc[date_mask]['EMA_7']
+    y = AD_plus_EMA.loc[date_mask]['EMA_7']
     p.line(x, y,  line_width=2, color = 'cyan', alpha = 1, legend_label = 'EMA(7)', line_dash = 'dotdash')
-    y = snp_AD.loc[date_mask]['EMA_10']
+    y = AD_plus_EMA.loc[date_mask]['EMA_10']
     p.line(x, y,  line_width=2, color = 'purple', alpha = 1, legend_label = 'EMA(10)', line_dash = 'dotted')
     p.legend.location = 'top_left'
     p.toolbar.active_scroll = "auto"
@@ -181,9 +185,6 @@ with dataset_info:
     p.legend.location = 'top_left'
     p.legend.orientation = 'horizontal'
     st.bokeh_chart(p, use_container_width=True)
-
-
-
 
 
 gains_section = st.container()
