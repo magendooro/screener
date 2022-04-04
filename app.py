@@ -4,8 +4,10 @@ from numpy import insert
 import streamlit as st
 import pandas as pd
 from bokeh.plotting import figure
-from bokeh.palettes import Magma, Inferno, Plasma, Viridis, Cividis
-
+from bokeh.palettes import Turbo256, Category20, Spectral
+from bokeh.palettes import brewer
+import numpy as np
+from sklearn.preprocessing import MinMaxScaler
 
 import datetime
 from metrics import calculate_metrics, read_all_tickers
@@ -95,6 +97,7 @@ with dataset_info:
     date_mask = (snp_data['Date'] > snp_date_lower) & (snp_data['Date'] < snp_date_upper)
     x = snp_data.loc[date_mask].Date
     y = snp_data.loc[date_mask].Close
+    industry_ads = industry_ads.loc[(industry_ads.index < snp_date_upper) & (industry_ads.index > snp_date_lower)]
     p = figure(title = 'S&P Performance',
         x_axis_label = 'Date',
         y_axis_label = 'Close',
@@ -125,19 +128,54 @@ with dataset_info:
     st.bokeh_chart(p, use_container_width=True)
     st.caption(body = 'The A/D line can be interpreted as an indicator that shows the trend for a majority of stocks.')
 
-    p = figure(title = 'A/D by industry',
+    st.write()
+
+    industries_selection = st.multiselect(label = 'Industries of interest: ', options = industry_ads.columns, default=industry_ads.columns.values[:5])
+    p = figure(title = 'A/D by industry scaled',
         x_axis_label = 'Date',
         y_axis_label = 'A/D value',
         x_axis_type ='datetime',
         plot_width = 800,
-        plot_height = 200,
+        plot_height = 250,
         tools = 'wheel_zoom, pan, reset')
-    p.multiline(x = industry_ads['Date'], y = industry_ads.drop('Date'))
     p.toolbar.active_scroll = "auto"
+    x = industry_ads.index
+    scaler = MinMaxScaler()
+    color_idx = 0 
+    color_range = np.linspace(0, 200, len(industries_selection), dtype=np.int64)
+    colors = [Turbo256[idx] for idx in color_range]
     
+    for column in industry_ads.columns:
+        if column in industries_selection:
+            y = industry_ads[[column]]
+            y = scaler.fit_transform(y)
+            if column == 'A/D':
+                p.line(x, np.squeeze(y), line_width=2, alpha = 1, color = 'black', legend_label = 'S&P500', line_dash = 'dashed')
+            else:
+                p.line(x, np.squeeze(y), line_width=2, alpha = .50, color = colors[color_idx], legend_label = column)
+        color_idx += 1
     
+    p.legend.location = 'top_left'
    
-    # st.bokeh_chart(p, use_container_width=True)
+    st.bokeh_chart(p, use_container_width=True)
+    iads = industry_ads.drop(columns = 'A/D')
+    # st.area_chart(iads, use_container_width = True)
+
+    p = figure(title = 'A/D by industry stacked',
+        x_axis_label = 'Date',
+        y_axis_label = 'A/D value',
+        x_axis_type ='datetime',
+        plot_width = 800,
+        plot_height = 400,
+        tools = 'wheel_zoom, pan, reset')
+    
+    p.varea_stack(stackers=industries_selection, x='Date', color = colors, legend_label=industries_selection, source=iads)
+    p.legend.location = 'top_left'
+    p.legend.orientation = 'horizontal'
+    st.bokeh_chart(p, use_container_width=True)
+
+
+
 
 
 gains_section = st.container()
@@ -313,7 +351,6 @@ with exploration:
     pattern_will = find_w_pattern(subset, column_of_interest='WillR')
 
     st.bokeh_chart(pattern_close, use_container_width = True)
-
     st.bokeh_chart(pattern_will, use_container_width = True)
 
 
