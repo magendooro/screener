@@ -11,7 +11,9 @@ import datetime
 import time 
 from tqdm import tqdm
 
-# yf.pdr_override()
+from sqlalchemy import create_engine
+import psycopg2
+
 #%%
 
 yf_params = {
@@ -33,31 +35,38 @@ def get_hist_data(ticker: str, params: dict = None) -> pd.DataFrame:
 
 
 def collect_tickers(tickers, params: dict = None, timeout:float = 1) -> None:
-    if not os.path.exists(TICKER_FOLDER):
-        os.makedirs(TICKER_FOLDER)
+    password = 'user2password'
+    engine = create_engine(url = f'postgresql+psycopg2://stocksuser2:{password}@localhost/stocksdb1')
     
+    # Add S&P ticker
+
     tickers_obj = yf.Tickers(tickers)
     collected_data = tickers_obj.download(**params)
     
     ticker_dict = tickers_obj.tickers
     
-    print()
-    print('Saving tickers to their corresponding files...')
-    
+    data_collector = []
     for ticker in tqdm(list(ticker_dict.keys())):
-        ticker_path = TICKER_FOLDER + ticker + '.csv'
         data_subset = collected_data[ticker]
         data_subset.reset_index(inplace = True)
         data_subset = data_subset.assign(Symbol = ticker)
-        
-        # Hopefully the following condition sorts out the empty subset problem...
-        if not data_subset.loc[:, data_subset.columns.difference(['Date', 'Symbol'])].isna().all().all(): 
-            data_subset.to_csv(ticker_path, index = False)
+        data_collector.append(data_subset)
+    
+    data = pd.concat(data_collector, axis = 0, ignore_index = True)
+    
+    data['Updated'] = datetime.datetime.now()
+    data = data[['Symbol', 'Date', 'Open', 'High', 'Low', 'Close', 'Volume', 'Dividends', 'Stock Splits', 'Updated']]
+    # Saving to the database; if table exists, overwrite
+    table_name = 'daily_stocks_data'
+    data.to_sql(name = table_name, con = engine, if_exists = 'replace')
 
     print('Accesing S&P index..')
     snp_obj = yf.Ticker('^GSPC')
     snp_data = snp_obj.history(**yf_params).reset_index()
-    snp_data.to_csv('data/snp_perf.csv', index = False)
+    snp_data.assign(Symbol = '^GSPC')
+    
+    table_name = 'daily_index_data'
+    snp_data.to_sql(name = table_name, con = engine, if_exists = 'replace')
 
     
 
