@@ -1,19 +1,34 @@
 
 #%%
+
+from numpy import datetime64
 import dask.dataframe as ddf
 import pandas as pd
 from talib import WILLR
 from talib import EMA
 import copy 
-#%%
+from sqlalchemy import create_engine
+import psycopg2
 
+#%%
 TICKER_FOLDER = 'data/tickers/'
+PASSWORD = 'user2password' 
+ENGINE = create_engine(url = f'postgresql+psycopg2://stocksuser2:{PASSWORD}@localhost/stocksdb1')
+
+# def read_all_tickers(folder_path):
+#     df = ddf.read_csv(f"{folder_path}/*.csv", assume_missing = True)
+#     df = df.compute()
+#     return df
 #%%
-def read_all_tickers(folder_path):
-    df = ddf.read_csv(f"{folder_path}/*.csv", assume_missing = True)
-    df = df.compute()
+def query_database(query:str)-> pd.DataFrame:
+    """
+    query: SQL query or table name
+    """
+    with ENGINE.connect() as connection:
+        df = pd.read_sql(sql = query, con = connection) 
+        
     return df
-#%%
+
 def calculate_metrics(df, will_r_timeperiod = 21, ema_timeperiod = 13):
     tickers = df.Symbol.unique()
     df = copy.deepcopy(df)
@@ -34,7 +49,7 @@ def calculate_metrics(df, will_r_timeperiod = 21, ema_timeperiod = 13):
     new_df = pd.concat(updated_dfs, ignore_index=True)
 
     return new_df
-#%%
+
 def check_gains(df, timeframe = 1):
     tickers = df.Symbol.unique()
     df = copy.deepcopy(df)
@@ -55,11 +70,11 @@ def check_gains(df, timeframe = 1):
     return new_df
 
 def calculate_AD(df):
-    df = copy.deepcopy(df)
-    df.sort_values(by = ['Symbol', 'Date'], ascending=[True, True], inplace = True)
-    grouped = df.groupby('Symbol')
+    new_df = copy.deepcopy(df)
+    new_df.sort_values(by = ['Symbol', 'Date'], ascending=[True, True], inplace = True)
+    grouped = new_df.groupby('Symbol')
     df['Change'] = grouped.Close.pct_change().apply(lambda x: 1 if x > 0 else -1)
-    daily_NA = df.groupby(by = 'Date').Change.sum()
+    daily_NA = new_df.groupby(by = 'Date').Change.sum()
     a_per_d = daily_NA.rolling(2).sum()
     a_per_d = pd.DataFrame(a_per_d).reset_index()
     a_per_d.columns = ['Date', 'S&P500']
@@ -93,8 +108,15 @@ def calculate_industries_ads(data):
 
     industries_df = pd.concat(industries_AD, axis = 1)
     return industries_df
-#%%
+
 if __name__ == '__main__':
     pass
+#%%
+data = query_database('daily_stocks_data')
 # %%
-
+data
+# %%
+data.sort_values(by = ['Symbol', 'Date'], ascending=[True, True], inplace = True)
+# %%
+data
+# %%

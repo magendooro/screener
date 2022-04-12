@@ -11,11 +11,13 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
 import datetime
-from metrics import calculate_metrics, read_all_tickers
+from metrics import calculate_metrics
 import seaborn as sns
 import matplotlib.pyplot as plt
 from pandas.core.common import SettingWithCopyWarning
-from metrics import read_all_tickers
+
+from metrics import query_database
+# from metrics import read_all_tickers
 from metrics import check_gains
 from metrics import calculate_AD_EMA
 from metrics import calculate_AD
@@ -31,8 +33,9 @@ day_mark_90 = datetime.date.today() - datetime.timedelta(days = 90)
 
 @st.cache 
 def get_industries():
-    ticker_data = pd.read_csv('data/sp500.csv')
+    ticker_data = pd.read_csv('data/sp500.csv') # TODO replace w/ database query
     return ticker_data
+
 
 
 @st.cache
@@ -41,9 +44,16 @@ def calculate_industries_AD(data):
     
 
 @st.cache
-def read_data():
-    data = read_all_tickers('data/tickers/')
-    data.Date = data.Date.apply(lambda x: datetime.date.fromisoformat(x))
+# def read_data():
+#     data = read_all_tickers('data/tickers/') # TODO Replace w/ database query
+#     data.Date = data.Date.apply(lambda x: datetime.date.fromisoformat(x))
+#     return data
+
+
+@st.cache 
+def read_data2():
+    data = query_database('daily_stocks_data')
+    data.Date = data.Date.apply(lambda x: pd.to_datetime(x).date)
     return data
 
 @st.cache
@@ -62,14 +72,15 @@ def get_AD(data):
     return calculate_AD(data)
 
 plt.style.use('dark_background')
-data = copy.deepcopy(read_data())
-snp_data = pd.read_csv('data/snp_perf.csv')
+data = read_data2()
+snp_data = pd.read_csv('data/snp_perf.csv') # TODO Replace w/ db query; indexes table 
 snp_data.Date = snp_data.Date.apply(lambda x: datetime.date.fromisoformat(x))
+
 
 snp_AD = get_AD(data)
 industry_ads = calculate_industries_AD(data)
 intro = st.container()
-intro.title("S&P500 Screener")
+intro.title("S&P500")
     
 # Num tickers/timeframe 
 dataset_info = st.container()
@@ -79,9 +90,12 @@ with dataset_info:
     
     st.markdown('S&P500 index:')
     snp_date_lower, snp_date_upper = st.date_input(label = 'Select the date range of interest.', value = (snp_data.Date.max() - datetime.timedelta(days = 180), snp_data.Date.max()), min_value =  snp_data.Date.min(), max_value = snp_data.Date.max())
+    
     date_mask = (snp_data['Date'] > snp_date_lower) & (snp_data['Date'] < snp_date_upper)
     x = snp_data.loc[date_mask].Date
     y = snp_data.loc[date_mask].Close
+
+
     industry_ads = industry_ads.loc[(industry_ads.index < snp_date_upper) & (industry_ads.index > snp_date_lower)]
     p = figure(title = 'S&P Performance',
         x_axis_label = 'Date',
@@ -316,9 +330,4 @@ with exploration:
 
     st.bokeh_chart(pattern_close, use_container_width = True)
     st.bokeh_chart(pattern_will, use_container_width = True)
-
-
-
-
-
 
