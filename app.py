@@ -1,5 +1,4 @@
-from operator import index
-
+#%%
 from numpy import insert
 import streamlit as st
 import pandas as pd
@@ -71,7 +70,7 @@ def update_data(data, williams_choice, ema_choice):
 def get_AD(data):
     return calculate_AD(data)
 
-
+#%%
 data = read_data2('daily_stocks_data')
 snp_data = pd.read_csv('data/snp_perf.csv') # TODO Replace w/ db query; indexes table 
 snp_data.Date = snp_data.Date.apply(lambda x: datetime.date.fromisoformat(x))
@@ -237,7 +236,7 @@ with parameter_selection:
     
     ema_lower_thresh, ema_upper_thresh = col2.select_slider(label = 'EMA range', options = range(-100, 1, 1), value = (-100, -70))
    
-   
+    st.write(updated_data)
 
 
 
@@ -276,7 +275,6 @@ with filtered:
 
 
 st.caption(f"The table below can be sorted by clicking on the column header.")
-st.dataframe(thresh_filtered[['Date', 'Symbol', 'WillR', 'WillR_EMA', 'Close']])
 
 
 
@@ -286,49 +284,57 @@ st.dataframe(thresh_filtered[['Date', 'Symbol', 'WillR', 'WillR_EMA', 'Close']])
 
 # Where ema < W%R
 exploration = st.container()
+
 with exploration:
-    exploration_choice = st.selectbox(label = "Inspect the following ticker:", options = thresh_filtered.Symbol.unique() )
-    date_col1, date_col2 = st.columns(2)
-    with date_col1:
-        date_lower = st.date_input(
-            label = 'From',
-            value = day_mark_90,
-            min_value = updated_data.Date.min(),
-            max_value = updated_data.Date.max())
-    with date_col2:
-        date_upper = st.date_input(
-            label = 'To',
-            value = updated_data.Date.max(),
-            min_value = updated_data.Date.min(),
-            max_value = updated_data.Date.max())
+    if thresh_filtered.Symbol.unique().any():
+        st.dataframe(thresh_filtered[['Date', 'Symbol', 'WillR', 'WillR_EMA', 'Close']])
 
-    subset = updated_data.loc[(updated_data.Symbol == exploration_choice) & (updated_data.Date > date_lower) & ( updated_data.Date < date_upper)]
+        exploration_choice = st.selectbox(label = "Inspect the following ticker:", options = thresh_filtered.Symbol.unique(), index = 0)
+        date_col1, date_col2 = st.columns(2)
+        with date_col1:
+            date_lower = st.date_input(
+                label = 'From',
+                value = day_mark_90,
+                min_value = updated_data.Date.min(),
+                max_value = updated_data.Date.max())
+        with date_col2:
+            date_upper = st.date_input(
+                label = 'To',
+                value = updated_data.Date.max(),
+                min_value = updated_data.Date.min(),
+                max_value = updated_data.Date.max())
 
-    close_p = figure(title = f"Closing price data for ${exploration_choice}",
-        x_axis_label = 'Date',
-        y_axis_label = 'Close',
-        x_axis_type ='datetime',
-        plot_width = 1000,
-        plot_height = 200,
-        tools = 'wheel_zoom, pan, reset')
-    close_p.line(x = subset.Date, y = subset['Close'], line_width = 1)
+        subset = updated_data.loc[(updated_data.Symbol == exploration_choice) & (updated_data.Date > date_lower) & ( updated_data.Date < date_upper)]
+        
+        close_p = figure(title = f"Closing price data for ${exploration_choice}",
+            x_axis_label = 'Date',
+            y_axis_label = 'Close',
+            x_axis_type ='datetime',
+            plot_width = 1000,
+            plot_height = 200,
+            tools = 'wheel_zoom, pan, reset')
+        close_p.line(x = subset.Date, y = subset['Close'], line_width = 1)
 
-    will_ema_p = figure(title = f"Williams %R data for ${exploration_choice}",
-        x_axis_label = 'Date',
-        y_axis_label = 'Williams %R',
-        x_axis_type ='datetime',
-        plot_width = 1000,
-        plot_height = 200,
-        tools = 'wheel_zoom, pan, reset')
-    will_ema_p.line(x = subset.Date, y = subset['WillR'], line_width = 1, color = 'coral', legend_label = 'Williams %R')
-    will_ema_p.line(x = subset.Date, y = subset['WillR_EMA'], line_width = 1, color = 'black', legend_label = f"EMA {ema_choice}", line_dash = 'dashed')
-    will_ema_p.legend.location = 'top_left'
-    st.bokeh_chart(close_p,  use_container_width = True)
-    st.bokeh_chart(will_ema_p,  use_container_width = True)
+        will_ema_p = figure(title = f"Williams %R data for ${exploration_choice}",
+            x_axis_label = 'Date',
+            y_axis_label = 'Williams %R',
+            x_axis_type ='datetime',
+            plot_width = 1000,
+            plot_height = 200,
+            tools = 'wheel_zoom, pan, reset')
+        will_ema_p.line(x = subset.Date, y = subset['WillR'], line_width = 1, color = 'coral', legend_label = 'Williams %R')
+        will_ema_p.line(x = subset.Date, y = subset['WillR_EMA'], line_width = 1, color = 'black', legend_label = f"EMA {ema_choice}", line_dash = 'dashed')
+        will_ema_p.legend.location = 'top_left'
+        st.bokeh_chart(close_p,  use_container_width = True)
+        st.bokeh_chart(will_ema_p,  use_container_width = True)
 
-    pattern_close = find_w_pattern(subset, column_of_interest='Close')
-    pattern_will = find_w_pattern(subset, column_of_interest='WillR')
+        pattern_close = find_w_pattern(subset, column_of_interest='Close')
+        pattern_will = find_w_pattern(subset, column_of_interest='WillR')
 
-    st.bokeh_chart(pattern_close, use_container_width = True)
-    st.bokeh_chart(pattern_will, use_container_width = True)
+        st.bokeh_chart(pattern_close, use_container_width = True)
+        st.bokeh_chart(pattern_will, use_container_width = True)
+    else:
+        st.warning('No stock satisfies the range constraint of W%R or EMA...')
 
+
+# %%

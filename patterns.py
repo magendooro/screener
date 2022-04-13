@@ -1,4 +1,4 @@
-
+#%%
 import pandas as pd
 from bokeh.plotting import figure, show
 from bokeh.models import Label
@@ -6,7 +6,7 @@ from bokeh.models import Span
 
 from scipy.signal import find_peaks
 import numpy as np
-
+#%%
 def find_w_pattern(subset, column_of_interest = "Close"):
     subset['Gradient'] = np.gradient(subset[column_of_interest].rolling(center=False,window=4).mean())
     subset.reset_index(inplace = True, drop= True)
@@ -28,20 +28,10 @@ def find_w_pattern(subset, column_of_interest = "Close"):
                 if subset['Gradient'].iloc[x.index[1]:x.index[2]].is_monotonic and subset['Gradient'].iloc[x.index[2]:x.index[3]].is_monotonic:
                     double_bottoms.append(x)
                     db_count += 1
+
     
     mod_db = [ db*.9 for db in double_bottoms] 
-    # plt.figure(figsize=(50,5))
-    # plt.plot(subset.index, subset[column_of_interest])
-    # plt.xticks(subset.Date)
-    # plt.scatter(x = peaks, y = subset[column_of_interest].iloc[peaks], alpha = .9, color = 'g')
-    # plt.scatter(x = bottoms, y = subset[column_of_interest].iloc[bottoms], alpha = .9, color = 'r')
-    # i = 0
-    # for db in mod_db:
-    #     plt.plot(db.index, db.values, color = 'purple',linestyle = '-', alpha = .5)
-    #     plt.axvspan(db.index[0], db.index[-1], color = 'lightgray', alpha = .5) 
-    #     plt.text(x = db.index[0], y = db.values[0] * .98, s = str(i))
-    #     i+=1
-        
+
     p = figure(title = f'W patterns in {column_of_interest}',
         x_axis_label = 'Date',
         y_axis_label = 'W%R',
@@ -70,5 +60,7 @@ def find_w_pattern(subset, column_of_interest = "Close"):
     
     return p
 
+#%%
+ 
 if __name__ == '__main__':
     pass
