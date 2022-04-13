@@ -1,7 +1,6 @@
 
 #%%
 
-from numpy import datetime64
 import dask.dataframe as ddf
 import pandas as pd
 from talib import WILLR
@@ -13,7 +12,7 @@ import psycopg2
 #%%
 TICKER_FOLDER = 'data/tickers/'
 PASSWORD = 'user2password' 
-ENGINE = create_engine(url = f'postgresql+psycopg2://stocksuser2:{PASSWORD}@localhost/stocksdb1')
+ENGINE = create_engine(url = f'postgresql+psycopg2://stocksuser2:{PASSWORD}@localhost/stocksdb')
 
 # def read_all_tickers(folder_path):
 #     df = ddf.read_csv(f"{folder_path}/*.csv", assume_missing = True)
@@ -32,7 +31,7 @@ def query_database(query:str)-> pd.DataFrame:
 def calculate_metrics(df, will_r_timeperiod = 21, ema_timeperiod = 13):
     tickers = df.Symbol.unique()
     df = copy.deepcopy(df)
-    df.sort_values(by = ['Symbol', 'Date'], ascending=[True, True], inplace = True)
+    df.sort_values(by = 'Date', ascending= True, inplace = True)
     df.reset_index(inplace = True)
     
     updated_dfs = []
@@ -71,14 +70,12 @@ def check_gains(df, timeframe = 1):
 
 def calculate_AD(df):
     new_df = copy.deepcopy(df)
-    new_df.sort_values(by = ['Symbol', 'Date'], ascending=[True, True], inplace = True)
     grouped = new_df.groupby('Symbol')
-    df['Change'] = grouped.Close.pct_change().apply(lambda x: 1 if x > 0 else -1)
+    new_df['Change'] = grouped.Close.pct_change().apply(lambda x: 1 if x > 0 else -1)
     daily_NA = new_df.groupby(by = 'Date').Change.sum()
     a_per_d = daily_NA.rolling(2).sum()
     a_per_d = pd.DataFrame(a_per_d).reset_index()
     a_per_d.columns = ['Date', 'S&P500']
-
     return a_per_d
 
 def calculate_AD_EMA(df):
@@ -112,11 +109,9 @@ def calculate_industries_ads(data):
 if __name__ == '__main__':
     pass
 #%%
-data = query_database('daily_stocks_data')
-# %%
-data
-# %%
-data.sort_values(by = ['Symbol', 'Date'], ascending=[True, True], inplace = True)
-# %%
-data
+# data = query_database('daily_stocks_data')
+# data.Date = data.Date.apply(lambda x: pd.to_datetime(x).date())
+# # %%
+# # %%
+# calculate_metrics(data)
 # %%

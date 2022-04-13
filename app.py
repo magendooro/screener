@@ -29,7 +29,7 @@ import copy
 
 warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
 
-day_mark_90 = datetime.date.today() - datetime.timedelta(days = 90)
+day_mark_90 = datetime.date.today() - datetime.timedelta(days = 150)
 
 @st.cache 
 def get_industries():
@@ -51,9 +51,9 @@ def calculate_industries_AD(data):
 
 
 @st.cache 
-def read_data2():
-    data = query_database('daily_stocks_data')
-    data.Date = data.Date.apply(lambda x: pd.to_datetime(x).date)
+def read_data2(source: str):
+    data = query_database(source)
+    data.Date = data.Date.apply(lambda x: pd.to_datetime(x).date())
     return data
 
 @st.cache
@@ -71,8 +71,8 @@ def update_data(data, williams_choice, ema_choice):
 def get_AD(data):
     return calculate_AD(data)
 
-plt.style.use('dark_background')
-data = read_data2()
+
+data = read_data2('daily_stocks_data')
 snp_data = pd.read_csv('data/snp_perf.csv') # TODO Replace w/ db query; indexes table 
 snp_data.Date = snp_data.Date.apply(lambda x: datetime.date.fromisoformat(x))
 
@@ -92,6 +92,7 @@ with dataset_info:
     snp_date_lower, snp_date_upper = st.date_input(label = 'Select the date range of interest.', value = (snp_data.Date.max() - datetime.timedelta(days = 180), snp_data.Date.max()), min_value =  snp_data.Date.min(), max_value = snp_data.Date.max())
     
     date_mask = (snp_data['Date'] > snp_date_lower) & (snp_data['Date'] < snp_date_upper)
+
     x = snp_data.loc[date_mask].Date
     y = snp_data.loc[date_mask].Close
 
