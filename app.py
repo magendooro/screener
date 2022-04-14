@@ -38,21 +38,26 @@ def get_industries():
 
 
 @st.cache
-def calculate_industries_AD(data):
-    return calculate_industries_ads(data)
+def calculate_industries_AD(data, ticker_data):
+    return calculate_industries_ads(data, ticker_data)
     
 
 @st.cache
 # def read_data():
 #     data = read_all_tickers('data/tickers/') # TODO Replace w/ database query
-#     data.Date = data.Date.apply(lambda x: datetime.date.fromisoformat(x))
+#     data.date = data.date.apply(lambda x: datetime.date.fromisoformat(x))
 #     return data
 
 
 @st.cache 
 def read_data2(source: str):
     data = query_database(source)
-    data.Date = data.Date.apply(lambda x: pd.to_datetime(x).date())
+    data['date'] = data['date'].apply(lambda x: pd.to_datetime(x).date())
+    return data
+
+@st.cache 
+def read_data3(source: str):
+    data = query_database(source)
     return data
 
 @st.cache
@@ -72,34 +77,35 @@ def get_AD(data):
 
 #%%
 data = read_data2('daily_stocks_data')
-snp_data = pd.read_csv('data/snp_perf.csv') # TODO Replace w/ db query; indexes table 
-snp_data.Date = snp_data.Date.apply(lambda x: datetime.date.fromisoformat(x))
+snp_data = read_data2('daily_index_data')
+ticker_data = read_data3('ticker_data')
+# snp_data['date'] = snp_data['date'].apply(lambda x: datetime.date.fromisoformat(x))
 
 
 snp_AD = get_AD(data)
-industry_ads = calculate_industries_AD(data)
+industry_ads = calculate_industries_AD(data, ticker_data)
 intro = st.container()
 intro.title("S&P500")
     
 # Num tickers/timeframe 
 dataset_info = st.container()
 with dataset_info:
-    st.markdown(f"The dataset contains daily financial data for **{len(data.Symbol.unique())}** unique tickers.")
-    st.markdown(f"The included tickers span from **{data.Date.min()}** to **{data.Date.max()}**")
+    st.markdown(f"The dataset contains daily financial data for **{len(data.symbol.unique())}** unique tickers.")
+    st.markdown(f"The included tickers span from **{data['date'].min()}** to **{data['date'].max()}**")
     
     st.markdown('S&P500 index:')
-    snp_date_lower, snp_date_upper = st.date_input(label = 'Select the date range of interest.', value = (snp_data.Date.max() - datetime.timedelta(days = 180), snp_data.Date.max()), min_value =  snp_data.Date.min(), max_value = snp_data.Date.max())
+    snp_date_lower, snp_date_upper = st.date_input(label = 'Select the date range of interest.', value = (snp_data['date'].max() - datetime.timedelta(days = 180), snp_data['date'].max()), min_value =  snp_data['date'].min(), max_value = snp_data['date'].max())
     
-    date_mask = (snp_data['Date'] > snp_date_lower) & (snp_data['Date'] < snp_date_upper)
+    date_mask = (snp_data['date'] > snp_date_lower) & (snp_data['date'] < snp_date_upper)
 
-    x = snp_data.loc[date_mask].Date
-    y = snp_data.loc[date_mask].Close
+    x = snp_data.loc[date_mask]['date']
+    y = snp_data.loc[date_mask].close
 
 
     industry_ads = industry_ads.loc[(industry_ads.index < snp_date_upper) & (industry_ads.index > snp_date_lower)]
     p = figure(title = 'S&P Performance',
-        x_axis_label = 'Date',
-        y_axis_label = 'Close',
+        x_axis_label = 'date',
+        y_axis_label = 'close',
         x_axis_type ='datetime',
         
         plot_width = 800,
@@ -112,10 +118,10 @@ with dataset_info:
     st.bokeh_chart(p, use_container_width=True)
 
     AD_plus_EMA = calculate_AD_EMA(snp_AD)
-    x = AD_plus_EMA.loc[date_mask].Date
-    y = AD_plus_EMA.loc[date_mask]['S&P500']
+    x = AD_plus_EMA.loc[date_mask]['date']
+    y = AD_plus_EMA.loc[date_mask]['s&p500']
     p = figure(title = 'A/D line',
-        x_axis_label = 'Date',
+        x_axis_label = 'date',
         y_axis_label = 'A/D value',
         x_axis_type ='datetime',
         
@@ -136,11 +142,11 @@ with dataset_info:
     st.bokeh_chart(p, use_container_width=True)
     st.caption(body = 'The A/D line can be interpreted as an indicator that shows the trend for a majority of stocks.')
 
-    st.write()
+    
 
     industries_selection = st.multiselect(label = 'Industries of interest: ', options = industry_ads.columns, default=industry_ads.columns.values[:5])
     p = figure(title = 'A/D by industry scaled',
-        x_axis_label = 'Date',
+        x_axis_label = 'date',
         y_axis_label = 'A/D value',
         x_axis_type ='datetime',
         plot_width = 800,
@@ -157,8 +163,8 @@ with dataset_info:
         if column in industries_selection:
             y = industry_ads[[column]]
             y = scaler.fit_transform(y)
-            if column == 'S&P500':
-                p.line(x, np.squeeze(y), line_width=2, alpha = 1, color = 'black', legend_label = 'S&P500', line_dash = 'dashed')
+            if column == 's&p500':
+                p.line(x, np.squeeze(y), line_width=2, alpha = 1, color = 'black', legend_label = 's&p500', line_dash = 'dashed')
             else:
                 p.line(x, np.squeeze(y), line_width=2, alpha = .50, color = colors[color_idx], legend_label = column)
         color_idx += 1
@@ -166,18 +172,18 @@ with dataset_info:
     p.legend.location = 'top_left'
    
     st.bokeh_chart(p, use_container_width=True)
-    iads = industry_ads.drop(columns = 'S&P500')
+    iads = industry_ads.drop(columns = 's&p500')
     # st.area_chart(iads, use_container_width = True)
 
     p = figure(title = 'A/D by industry stacked',
-        x_axis_label = 'Date',
+        x_axis_label = 'date',
         y_axis_label = 'A/D value',
         x_axis_type ='datetime',
         plot_width = 800,
         plot_height = 400,
         tools = 'wheel_zoom, pan, reset')
     
-    p.varea_stack(stackers=industries_selection, x='Date', color = colors, legend_label=industries_selection, source=iads)
+    p.varea_stack(stackers=industries_selection, x='date', color = colors, legend_label=industries_selection, source=iads)
     p.legend.location = 'top_left'
     p.legend.orientation = 'horizontal'
     st.bokeh_chart(p, use_container_width=True)
@@ -198,7 +204,7 @@ with gains_section:
         gains_df = update_gains(data, 7)
     elif gains_selection == 'monthly':
         gains_df = update_gains(data, 1)
-    gdf = gains_df.loc[gains_df.Date == gains_df.Date.max()].loc[:, ['Symbol', 'Close', 'Gains/Losses' ]].sort_values(by = 'Gains/Losses', ascending = False)
+    gdf = gains_df.loc[gains_df['date'] == gains_df['date'].max()].loc[:, ['symbol', 'close', 'Gains/Losses' ]].sort_values(by = 'Gains/Losses', ascending = False)
 
 
     top_decrease = gdf.iloc[-5:]
@@ -208,10 +214,10 @@ with gains_section:
 
 
     for i in reversed(range(len(top_increase))):
-        loss_columns[i].metric(label = top_increase.iloc[i]['Symbol'], value = round(top_increase.iloc[i]['Close'],4), delta = str(round(top_increase.iloc[i]['Gains/Losses'], 3) * 100) + '%')
+        loss_columns[i].metric(label = top_increase.iloc[i]['symbol'], value = round(top_increase.iloc[i]['close'],4), delta = str(round(top_increase.iloc[i]['Gains/Losses'], 3) * 100) + '%')
 
     for i in reversed(range(len(top_decrease))):
-        gains_columns[i].metric(label = top_decrease.iloc[i]['Symbol'], value = round(top_decrease.iloc[i]['Close'], 4), delta = str(round(top_decrease.iloc[i]['Gains/Losses'], 3) * 100) + '%')
+        gains_columns[i].metric(label = top_decrease.iloc[i]['symbol'], value = round(top_decrease.iloc[i]['close'], 4), delta = str(round(top_decrease.iloc[i]['Gains/Losses'], 3) * 100) + '%')
 
 # User input and display tickers that satisfy the condition
 parameter_selection = st.container()
@@ -236,7 +242,6 @@ with parameter_selection:
     
     ema_lower_thresh, ema_upper_thresh = col2.select_slider(label = 'EMA range', options = range(-100, 1, 1), value = (-100, -70))
    
-    st.write(updated_data)
 
 
 
@@ -248,10 +253,10 @@ with filtered:
     with col1_t:
             date_selection = st.date_input(
             label = 'Consider Williams %R on this day',
-            value = data.Date.max(),
-            min_value = data.Date.min(),
-            max_value = data.Date.max())
-    date_filtered_data = updated_data.loc[updated_data.Date == date_selection]
+            value = data['date'].max(),
+            min_value = data['date'].min(),
+            max_value = data['date'].max())
+    date_filtered_data = updated_data.loc[updated_data['date'] == date_selection]
 
 # Filtering results
 
@@ -286,49 +291,49 @@ st.caption(f"The table below can be sorted by clicking on the column header.")
 exploration = st.container()
 
 with exploration:
-    if thresh_filtered.Symbol.unique().any():
-        st.dataframe(thresh_filtered[['Date', 'Symbol', 'WillR', 'WillR_EMA', 'Close']])
+    if thresh_filtered.symbol.unique().any():
+        st.dataframe(thresh_filtered[['date', 'symbol', 'WillR', 'WillR_EMA', 'close']])
 
-        exploration_choice = st.selectbox(label = "Inspect the following ticker:", options = thresh_filtered.Symbol.unique(), index = 0)
+        exploration_choice = st.selectbox(label = "Inspect the following ticker:", options = thresh_filtered.symbol.unique(), index = 0)
         date_col1, date_col2 = st.columns(2)
         with date_col1:
             date_lower = st.date_input(
                 label = 'From',
                 value = day_mark_90,
-                min_value = updated_data.Date.min(),
-                max_value = updated_data.Date.max())
+                min_value = updated_data['date'].min(),
+                max_value = updated_data['date'].max())
         with date_col2:
             date_upper = st.date_input(
                 label = 'To',
-                value = updated_data.Date.max(),
-                min_value = updated_data.Date.min(),
-                max_value = updated_data.Date.max())
+                value = updated_data['date'].max(),
+                min_value = updated_data['date'].min(),
+                max_value = updated_data['date'].max())
 
-        subset = updated_data.loc[(updated_data.Symbol == exploration_choice) & (updated_data.Date > date_lower) & ( updated_data.Date < date_upper)]
+        subset = updated_data.loc[(updated_data.symbol == exploration_choice) & (updated_data['date'] > date_lower) & ( updated_data['date'] < date_upper)]
         
         close_p = figure(title = f"Closing price data for ${exploration_choice}",
-            x_axis_label = 'Date',
-            y_axis_label = 'Close',
+            x_axis_label = 'date',
+            y_axis_label = 'close',
             x_axis_type ='datetime',
             plot_width = 1000,
             plot_height = 200,
             tools = 'wheel_zoom, pan, reset')
-        close_p.line(x = subset.Date, y = subset['Close'], line_width = 1)
+        close_p.line(x = subset['date'], y = subset['close'], line_width = 1)
 
         will_ema_p = figure(title = f"Williams %R data for ${exploration_choice}",
-            x_axis_label = 'Date',
+            x_axis_label = 'date',
             y_axis_label = 'Williams %R',
             x_axis_type ='datetime',
             plot_width = 1000,
             plot_height = 200,
             tools = 'wheel_zoom, pan, reset')
-        will_ema_p.line(x = subset.Date, y = subset['WillR'], line_width = 1, color = 'coral', legend_label = 'Williams %R')
-        will_ema_p.line(x = subset.Date, y = subset['WillR_EMA'], line_width = 1, color = 'black', legend_label = f"EMA {ema_choice}", line_dash = 'dashed')
+        will_ema_p.line(x = subset['date'], y = subset['WillR'], line_width = 1, color = 'coral', legend_label = 'Williams %R')
+        will_ema_p.line(x = subset['date'], y = subset['WillR_EMA'], line_width = 1, color = 'black', legend_label = f"EMA {ema_choice}", line_dash = 'dashed')
         will_ema_p.legend.location = 'top_left'
         st.bokeh_chart(close_p,  use_container_width = True)
         st.bokeh_chart(will_ema_p,  use_container_width = True)
 
-        pattern_close = find_w_pattern(subset, column_of_interest='Close')
+        pattern_close = find_w_pattern(subset, column_of_interest='close')
         pattern_will = find_w_pattern(subset, column_of_interest='WillR')
 
         st.bokeh_chart(pattern_close, use_container_width = True)

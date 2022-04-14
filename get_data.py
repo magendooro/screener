@@ -59,6 +59,7 @@ def collect_tickers(tickers, params: dict = None, timeout:float = 1) -> None:
     table_name = 'daily_stocks_data'
     print()
     print(f"Saving {table_name.replace('_', ' ')} to the database.")
+    data.columns = data.columns.str.lower()
     data.to_sql(name = table_name, con = ENGINE, if_exists = 'replace')
     
     print()
@@ -71,6 +72,7 @@ def collect_tickers(tickers, params: dict = None, timeout:float = 1) -> None:
     snp_data['Updated'] = datetime.datetime.now()
     
     print(f"Saving {table_name.replace('_', ' ')} to the database.")
+    snp_data.columns = snp_data.columns.str.lower()
     snp_data.to_sql(name = table_name, con = ENGINE, if_exists = 'replace')
 
     
@@ -83,17 +85,17 @@ def update_tickers(params, timeout:float = 0):
     
     
     latest_entries_dates = pd.read_sql(sql = """
-                SELECT DISTINCT ON ("Symbol")
-                    "Symbol", "Date"
+                SELECT DISTINCT ON (symbol)
+                    symbol, date
                 FROM 
                     daily_stocks_data
-                ORDER BY "Symbol", "Date" DESC
+                ORDER BY symbol, date DESC
     """, con = ENGINE)
-    unique_dates = latest_entries_dates.Date.unique()
+    unique_dates = latest_entries_dates.date.unique()
     
     # STOCKS
     for date_value in unique_dates:
-        tickers_list = latest_entries_dates.loc[latest_entries_dates.Date == date_value].Symbol.to_list()
+        tickers_list = latest_entries_dates.loc[latest_entries_dates.date == date_value].symbol.to_list()
         date_value = pd.to_datetime(date_value).date()
         params['start'] = date_value
         
@@ -124,18 +126,19 @@ def update_tickers(params, timeout:float = 0):
         table_name = 'daily_stocks_data'
         print()
         print(f"Saving {table_name.replace('_', ' ')} for {len(tickers_list)} tickers to the database.")
+        data.columns = data.columns.str.lower()
         data.to_sql(name = table_name, con = ENGINE, if_exists = 'append')
 
     # indices
     index_max_dates = pd.read_sql(sql = """
-                SELECT DISTINCT ON ("Symbol")
-                    "Symbol", "Date"
+                SELECT DISTINCT ON (Symbol)
+                    symbol, date
                 FROM 
                     daily_index_data
-                ORDER BY "Symbol", "Date" DESC
+                ORDER BY symbol, date DESC
     """, con = ENGINE)
     
-    max_date = index_max_dates.Date.unique()[0]
+    max_date = index_max_dates.date.unique()[0]
     date_value = pd.to_datetime(max_date).date()
     params['start'] = date_value
     
@@ -153,6 +156,7 @@ def update_tickers(params, timeout:float = 0):
     snp_data['Updated'] = datetime.datetime.now()
     
     print(f"Saving {table_name.replace('_', ' ')} to the database...")
+    snp_data.columns = snp_data.columns.str.lower()
     snp_data.to_sql(name = table_name, con = ENGINE, if_exists = 'append')
     
     
@@ -163,7 +167,7 @@ if __name__ == "__main__":
     # with open('data/sp500_tickers.json', 'r') as f:
     #     ticker_dict = json.load(f)
     try:
-        tickers = pd.read_sql(sql = 'SELECT "Symbol" FROM ticker_data', con = ENGINE)['Symbol'].to_list()
+        tickers = pd.read_sql(sql = 'SELECT symbol FROM ticker_data', con = ENGINE)['symbol'].to_list()
     except:
         print("No ticker could be retrieved from the database.")
 
@@ -173,4 +177,21 @@ if __name__ == "__main__":
         update_tickers(yf_params)
     else: 
         print('Invalid argument..')
+# %%
+# pd.read_sql('daily_index_data', con = ENGINE)
 
+# #%%
+# pd.read_sql_query(sql = \
+#     """
+#     DELETE FROM daily_index_data a USING (
+#         SELECT MAX(date)
+#         FROM daily_index_data
+#         GROUP BY date HAVING COUNT(*) > 1
+#         ) b
+#         WHERE a.date = b.date
+#     """,
+#     con = ENGINE
+# )
+# # %%
+# data
+# # # %%

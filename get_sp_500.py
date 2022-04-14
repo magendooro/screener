@@ -11,7 +11,8 @@ if __name__ == '__main__':
     summary_table = data[0]
     tickers = summary_table[['Symbol', 'GICS Sector']]
     table_name = 'ticker_data'
-    tickers.set_index('Symbol').to_sql(table_name, con = ENGINE, if_exists='replace')
+    tickers.columns = tickers.columns.str.lower()
+    tickers.set_index('symbol').to_sql(table_name, con = ENGINE, if_exists='replace')
     print(f'Saved ticker data to the database; the name of the table: {table_name}')
 
 

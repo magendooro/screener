@@ -7,7 +7,7 @@ from bokeh.models import Span
 from scipy.signal import find_peaks
 import numpy as np
 #%%
-def find_w_pattern(subset, column_of_interest = "Close"):
+def find_w_pattern(subset, column_of_interest = "close"):
     subset['Gradient'] = np.gradient(subset[column_of_interest].rolling(center=False,window=4).mean())
     subset.reset_index(inplace = True, drop= True)
     peaks, peak_properties = find_peaks(subset[column_of_interest], plateau_size = 1)
@@ -41,20 +41,20 @@ def find_w_pattern(subset, column_of_interest = "Close"):
         tools = 'wheel_zoom, pan, reset')
     
     
-    p.line(x = subset.Date, y = subset[column_of_interest], line_width = 1)
-    p.circle(x = subset.Date.iloc[peaks], y = subset[column_of_interest].iloc[peaks], size = 5, color = 'green', alpha = .5)
-    p.circle(x = subset.Date.iloc[bottoms], y = subset[column_of_interest].iloc[bottoms], size = 5, color = 'red', alpha = .5)
+    p.line(x = subset['date'], y = subset[column_of_interest], line_width = 1)
+    p.circle(x = subset['date'].iloc[peaks], y = subset[column_of_interest].iloc[peaks], size = 5, color = 'green', alpha = .5)
+    p.circle(x = subset['date'].iloc[bottoms], y = subset[column_of_interest].iloc[bottoms], size = 5, color = 'red', alpha = .5)
     idx = len(mod_db)
     for db in mod_db:
-        p.line(x = subset.Date.iloc[db.index], y = db.values, color = 'magenta')
-        w_begin = Span(location = subset.Date.iloc[db.index[0]], dimension = 'width', line_color='#009E73',
+        p.line(x = subset['date'].iloc[db.index], y = db.values, color = 'magenta')
+        w_begin = Span(location = subset['date'].iloc[db.index[0]], dimension = 'width', line_color='#009E73',
                               line_dash='dashed', line_width=3 )
-        w_end = Span(location = subset.Date.iloc[db.index[-1]], dimension = 'width', line_color='#009E73',
+        w_end = Span(location = subset['date'].iloc[db.index[-1]], dimension = 'width', line_color='#009E73',
                               line_dash='dashed', line_width=3)
         p.add_layout(w_begin)
         p.add_layout(w_end)
-        w_idx = Label(x = subset.Date.iloc[db.index[0]], y = db.values[0], text = str(idx))
-        p.triangle(x = subset.Date.iloc[db.index[0]], y = db.values[0], color = 'pink', size = 10)
+        w_idx = Label(x = subset['date'].iloc[db.index[0]], y = db.values[0], text = str(idx))
+        p.triangle(x = subset['date'].iloc[db.index[0]], y = db.values[0], color = 'pink', size = 10)
         p.add_layout(w_idx)
         idx -= 1
     
