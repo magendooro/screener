@@ -108,10 +108,3 @@ def calculate_industries_ads(data):
 
 if __name__ == '__main__':
     pass
-#%%
-# data = query_database('daily_stocks_data')
-# data.Date = data.Date.apply(lambda x: pd.to_datetime(x).date())
-# # %%
-# # %%
-# calculate_metrics(data)
-# %%
