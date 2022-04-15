@@ -1,4 +1,4 @@
-
+#%% 
 import sys
 import os
 import json
@@ -92,7 +92,7 @@ def update_tickers(params, timeout:float = 0):
                 ORDER BY symbol, date DESC
     """, con = ENGINE)
     unique_dates = latest_entries_dates.date.unique()
-    
+    print('Retrived valid tickers from the database...')
     # STOCKS
     for date_value in unique_dates:
         tickers_list = latest_entries_dates.loc[latest_entries_dates.date == date_value].symbol.to_list()
@@ -128,6 +128,24 @@ def update_tickers(params, timeout:float = 0):
         print(f"Saving {table_name.replace('_', ' ')} for {len(tickers_list)} tickers to the database.")
         data.columns = data.columns.str.lower()
         data.to_sql(name = table_name, con = ENGINE, if_exists = 'append')
+    # duplicate_removal_query = \
+    # """
+    # DELETE FROM daily_stocks_data a USING (
+    #     SELECT 
+    #         MAX(ctid) as ctid, date, symbol
+    #     FROM 
+    #         daily_stocks_data
+    #     GROUP BY 
+    #         date, symbol 
+    #     HAVING COUNT(*)>1
+    # ) b
+    # WHERE a.date = b.date
+    # AND a.ctid <> b.ctid
+    # """
+
+    # with ENGINE.connect() as connection:
+    #     connection.execute(duplicate_removal_query)
+
 
     # indices
     index_max_dates = pd.read_sql(sql = """
@@ -160,6 +178,22 @@ def update_tickers(params, timeout:float = 0):
     snp_data.to_sql(name = table_name, con = ENGINE, if_exists = 'append')
     
     
+    duplicate_removal_query = \
+    """
+    DELETE FROM daily_index_data a USING (
+        SELECT 
+            MAX(ctid) as ctid, date, symbol
+        FROM 
+            daily_index_data
+        GROUP BY 
+            date, symbol 
+        HAVING COUNT(*)>1
+    ) b
+    WHERE a.date = b.date
+    AND a.ctid <> b.ctid
+    """
+    with ENGINE.connect() as connection:
+        connection.execute(duplicate_removal_query)
    
 
 if __name__ == "__main__":
@@ -178,20 +212,79 @@ if __name__ == "__main__":
     else: 
         print('Invalid argument..')
 # %%
-# pd.read_sql('daily_index_data', con = ENGINE)
+pd.read_sql('daily_stocks_data', con = ENGINE)
 
-# #%%
+# # #%%
+# # pd.read_sql_query(sql = \
+# #     """
+# #         SELECT COUNT(date), date, symbol
+# #         FROM daily_index_data
+# #         GROUP BY symbol, date
+# #         HAVING COUNT(date) > 1
+# #         ORDER BY date;
+        
+# #     """,
+# #     con = ENGINE
+# # )
+# # %%
 # pd.read_sql_query(sql = \
 #     """
-#     DELETE FROM daily_index_data a USING (
-#         SELECT MAX(date)
-#         FROM daily_index_data
-#         GROUP BY date HAVING COUNT(*) > 1
-#         ) b
-#         WHERE a.date = b.date
+#     SELECT date, symbol, COUNT(*)
+#     FROM daily_index_data
+#     GROUP BY date, symbol
+#     HAVING count(*) > 1
+#     """, con  =ENGINE
+# )
+# # # # %%
+# # pd.read_sql_query('daily_stocks_data', con = ENGINE)
+
+# # %%
+# pd.read_sql_query(sql = \
+#     """
+#     SELECT MAX(ctid) as ctid, date, symbol
+#     FROM daily_stocks_data
+#     GROUP BY date, symbol HAVING COUNT(*)>1
+    
 #     """,
 #     con = ENGINE
 # )
+# #%%
+# pd.read_sql("""
+#     SELECT ctid, * FROM daily_stocks_data WHERE symbol = 'A' and date > '20220408' ORDER BY date
+#     """, con = ENGINE)
 # # %%
-# data
+# pd.read_sql_query(sql = \
+#     """
+#         SELECT
+#             MAX(ctid) as ctid, date, symbol
+#         FROM 
+#             daily_stocks_data
+#         GROUP BY 
+#             date, symbol 
+#         HAVING COUNT(*)>1
+       
+#     """, con  =ENGINE
+# )
+# # %%
+# duplicate_removal_query = \
+#     """
+#     DELETE FROM daily_stocks_data a USING (
+#         SELECT 
+#             MAX(ctid) as ctid, date, symbol
+#         FROM 
+#             daily_stocks_data
+#         GROUP BY 
+#             date, symbol 
+#         HAVING COUNT(*)>1
+#     ) b
+#     WHERE a.date = b.date
+#     AND a.ctid <> b.ctid
+#     """
+# #%%
+# with ENGINE.connect() as connection:
+#     connection.execute(duplicate_removal_query)
 # # # %%
+# # pd.read_sql("""SELECT * FROM daily_stocks_data ORDER BY date""", con = ENGINE)
+# # # %%
+
+# %%
