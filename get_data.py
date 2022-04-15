@@ -60,7 +60,7 @@ def collect_tickers(tickers, params: dict = None, timeout:float = 1) -> None:
     print()
     print(f"Saving {table_name.replace('_', ' ')} to the database.")
     data.columns = data.columns.str.lower()
-    data.to_sql(name = table_name, con = ENGINE, if_exists = 'append')
+    data.to_sql(name = table_name, con = ENGINE, if_exists = 'replace')
     
     print()
     print('Accesing S&P500 index..')
