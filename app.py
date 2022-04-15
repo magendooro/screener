@@ -96,12 +96,10 @@ with dataset_info:
     st.markdown('S&P500 index:')
     snp_date_lower, snp_date_upper = st.date_input(label = 'Select the date range of interest.', value = (snp_data['date'].max() - datetime.timedelta(days = 180), snp_data['date'].max()), min_value =  snp_data['date'].min(), max_value = snp_data['date'].max())
     
-    date_mask = (snp_data['date'] > snp_date_lower) & (snp_data['date'] < snp_date_upper)
+    date_mask = (snp_data['date'] > snp_date_lower) & (snp_data['date'] <= snp_date_upper)
 
     x = snp_data.loc[date_mask]['date']
     y = snp_data.loc[date_mask].close
-
-
     industry_ads = industry_ads.loc[(industry_ads.index < snp_date_upper) & (industry_ads.index > snp_date_lower)]
     p = figure(title = 'S&P Performance',
         x_axis_label = 'date',
@@ -309,7 +307,7 @@ with exploration:
                 min_value = updated_data['date'].min(),
                 max_value = updated_data['date'].max())
 
-        subset = updated_data.loc[(updated_data.symbol == exploration_choice) & (updated_data['date'] > date_lower) & ( updated_data['date'] < date_upper)]
+        subset = updated_data.loc[(updated_data.symbol == exploration_choice) & (updated_data['date'] > date_lower) & ( updated_data['date'] <= date_upper)]
         
         close_p = figure(title = f"Closing price data for ${exploration_choice}",
             x_axis_label = 'date',

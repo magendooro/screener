@@ -60,7 +60,7 @@ def collect_tickers(tickers, params: dict = None, timeout:float = 1) -> None:
     print()
     print(f"Saving {table_name.replace('_', ' ')} to the database.")
     data.columns = data.columns.str.lower()
-    data.to_sql(name = table_name, con = ENGINE, if_exists = 'replace')
+    data.to_sql(name = table_name, con = ENGINE, if_exists = 'append')
     
     print()
     print('Accesing S&P500 index..')
@@ -128,24 +128,24 @@ def update_tickers(params, timeout:float = 0):
         print(f"Saving {table_name.replace('_', ' ')} for {len(tickers_list)} tickers to the database.")
         data.columns = data.columns.str.lower()
         data.to_sql(name = table_name, con = ENGINE, if_exists = 'append')
-    # duplicate_removal_query = \
-    # """
-    # DELETE FROM daily_stocks_data a USING (
-    #     SELECT 
-    #         MAX(ctid) as ctid, date, symbol
-    #     FROM 
-    #         daily_stocks_data
-    #     GROUP BY 
-    #         date, symbol 
-    #     HAVING COUNT(*)>1
-    # ) b
-    # WHERE a.date = b.date
-    # AND a.ctid <> b.ctid
-    # """
 
-    # with ENGINE.connect() as connection:
-    #     connection.execute(duplicate_removal_query)
-
+    duplicate_removal_query = \
+        """
+        DELETE FROM daily_stocks_data a USING (
+            SELECT 
+                MIN(ctid) as ctid, date, symbol
+            FROM 
+                daily_stocks_data
+            GROUP BY 
+                date, symbol 
+            HAVING COUNT(*)>1
+        ) b
+        WHERE a.date = b.date
+        AND a.ctid <> b.ctid
+        AND a.symbol = b.symbol
+        """
+    with ENGINE.connect() as connection:
+        connection.execute(duplicate_removal_query)
 
     # indices
     index_max_dates = pd.read_sql(sql = """
@@ -179,19 +179,19 @@ def update_tickers(params, timeout:float = 0):
     
     
     duplicate_removal_query = \
-    """
-    DELETE FROM daily_index_data a USING (
-        SELECT 
-            MAX(ctid) as ctid, date, symbol
-        FROM 
-            daily_index_data
-        GROUP BY 
-            date, symbol 
-        HAVING COUNT(*)>1
-    ) b
-    WHERE a.date = b.date
-    AND a.ctid <> b.ctid
-    """
+        """
+        DELETE FROM daily_index_data a USING (
+            SELECT 
+                MAX(ctid) as ctid, date, symbol
+            FROM 
+                daily_index_data
+            GROUP BY 
+                date, symbol 
+            HAVING COUNT(*)>1
+        ) b
+        WHERE a.date = b.date
+        AND a.ctid <> b.ctid
+        """
     with ENGINE.connect() as connection:
         connection.execute(duplicate_removal_query)
    
@@ -212,55 +212,58 @@ if __name__ == "__main__":
     else: 
         print('Invalid argument..')
 # %%
-pd.read_sql('daily_stocks_data', con = ENGINE)
+# pd.read_sql('daily_stocks_data', con = ENGINE)
 
-# # #%%
+# # # #%%
+# # # pd.read_sql_query(sql = \
+# # #     """
+# # #         SELECT COUNT(date), date, symbol
+# # #         FROM daily_index_data
+# # #         GROUP BY symbol, date
+# # #         HAVING COUNT(date) > 1
+# # #         ORDER BY date;
+        
+# # #     """,
+# # #     con = ENGINE
+# # # )
+# # # %%
 # # pd.read_sql_query(sql = \
 # #     """
-# #         SELECT COUNT(date), date, symbol
-# #         FROM daily_index_data
-# #         GROUP BY symbol, date
-# #         HAVING COUNT(date) > 1
-# #         ORDER BY date;
-        
+# #     SELECT date, symbol, COUNT(*)
+# #     FROM daily_index_data
+# #     GROUP BY date, symbol
+# #     HAVING count(*) > 1
+# #     """, con  =ENGINE
+# # )
+# # # # # %%
+# # # pd.read_sql_query('daily_stocks_data', con = ENGINE)
+
+# # # %%
+# # pd.read_sql_query(sql = \
+# #     """
+# #     SELECT MAX(ctid) as ctid, date, symbol
+# #     FROM daily_stocks_data
+# #     GROUP BY date, symbol HAVING COUNT(*)>1
+    
 # #     """,
 # #     con = ENGINE
 # # )
-# # %%
-# pd.read_sql_query(sql = \
-#     """
-#     SELECT date, symbol, COUNT(*)
-#     FROM daily_index_data
-#     GROUP BY date, symbol
-#     HAVING count(*) > 1
-#     """, con  =ENGINE
-# )
-# # # # %%
-# # pd.read_sql_query('daily_stocks_data', con = ENGINE)
-
-# # %%
-# pd.read_sql_query(sql = \
-#     """
-#     SELECT MAX(ctid) as ctid, date, symbol
-#     FROM daily_stocks_data
-#     GROUP BY date, symbol HAVING COUNT(*)>1
-    
-#     """,
-#     con = ENGINE
-# )
 # #%%
 # pd.read_sql("""
-#     SELECT ctid, * FROM daily_stocks_data WHERE symbol = 'A' and date > '20220408' ORDER BY date
+#     SELECT ctid, * FROM daily_stocks_data WHERE symbol = 'TSLA' and date > '20220405'
 #     """, con = ENGINE)
-# # %%
+#  # %%
 # pd.read_sql_query(sql = \
 #     """
-#         SELECT
-#             MAX(ctid) as ctid, date, symbol
+#         SELECT 
+#             MIN(ctid) as ctid, date, symbol
 #         FROM 
 #             daily_stocks_data
+
+#         WHERE symbol = 'TSLA'
 #         GROUP BY 
-#             date, symbol 
+#             date, symbol
+        
 #         HAVING COUNT(*)>1
        
 #     """, con  =ENGINE
@@ -270,7 +273,7 @@ pd.read_sql('daily_stocks_data', con = ENGINE)
 #     """
 #     DELETE FROM daily_stocks_data a USING (
 #         SELECT 
-#             MAX(ctid) as ctid, date, symbol
+#             MIN(ctid) as ctid, date, symbol
 #         FROM 
 #             daily_stocks_data
 #         GROUP BY 
@@ -279,12 +282,18 @@ pd.read_sql('daily_stocks_data', con = ENGINE)
 #     ) b
 #     WHERE a.date = b.date
 #     AND a.ctid <> b.ctid
+#     AND a.symbol = b.symbol
 #     """
 # #%%
 # with ENGINE.connect() as connection:
 #     connection.execute(duplicate_removal_query)
-# # # %%
-# # pd.read_sql("""SELECT * FROM daily_stocks_data ORDER BY date""", con = ENGINE)
-# # # %%
+# # # # %%
+# # # pd.read_sql("""SELECT * FROM daily_stocks_data ORDER BY date""", con = ENGINE)
+# #%%
+# pd.read_sql("""
+#     SELECT ctid, * FROM daily_stocks_data WHERE symbol = 'A' and date > '20220405'
+#     """, con = ENGINE)
 
+# # %%
+# pd.read_sql('daily_index_data', con = ENGINE)
 # %%
