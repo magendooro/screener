@@ -25,7 +25,7 @@ def find_w_pattern(subset, column_of_interest = "Close"):
         
         if xl[0] > xl[1] and xl[1] < xl[2] and xl[2] > xl[3] and xl[1] < xl[3] and xl[3] < xl[4] and xl[2] < xl[4]:
             if xl[0] * .99 > xl[1]: # exclude minor movements
-                if subset['Gradient'].iloc[x.index[1]:x.index[2]].is_monotonic and subset['Gradient'].iloc[x.index[2]:x.index[3]].is_monotonic:
+                if subset['Gradient'].iloc[x.index[1]:x.index[2]].is_monotonic_increasing and subset['Gradient'].iloc[x.index[2]:x.index[3]].is_monotonic_increasing:
                     double_bottoms.append(x)
                     db_count += 1
     

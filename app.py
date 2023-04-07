@@ -14,7 +14,8 @@ import datetime
 from metrics import calculate_metrics, read_all_tickers
 import seaborn as sns
 import matplotlib.pyplot as plt
-from pandas.core.common import SettingWithCopyWarning
+#from pandas.core.common import SettingWithCopyWarning
+
 from metrics import read_all_tickers
 from metrics import check_gains
 from metrics import calculate_AD_EMA
@@ -25,39 +26,41 @@ from patterns import find_w_pattern
 import warnings
 import copy
 
-warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
+#warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
+pd.set_option('mode.chained_assignment', None)
 
 day_mark_90 = datetime.date.today() - datetime.timedelta(days = 90)
 
-@st.cache 
+@st.cache_data
 def get_industries():
     ticker_data = pd.read_csv('data/sp500.csv')
     return ticker_data
 
 
-@st.cache
+@st.cache_data
 def calculate_industries_AD(data):
     return calculate_industries_ads(data)
     
 
-@st.cache
+@st.cache_data
 def read_data():
     data = read_all_tickers('data/tickers/')
     data.Date = data.Date.apply(lambda x: datetime.date.fromisoformat(x))
+    #data.Name = data.Symbol.apply(lambda x: x.replace('.', ''))
     return data
 
-@st.cache
+@st.cache_data
 def update_gains(data, timeframe = 1):
     return check_gains(data, timeframe)
 
 
-@st.cache
+@st.cache_data
 def update_data(data, williams_choice, ema_choice):
     return calculate_metrics(data,
         will_r_timeperiod=williams_choice,
         ema_timeperiod=ema_choice)
 
-@st.cache
+@st.cache_data
 def get_AD(data):
     return calculate_AD(data)
 
@@ -88,8 +91,8 @@ with dataset_info:
         y_axis_label = 'Close',
         x_axis_type ='datetime',
         
-        plot_width = 800,
-        plot_height = 200,
+        min_width = 800,
+        min_height = 200,
         tools = 'wheel_zoom, pan, reset')
     
     p.line(x, y,  line_width=2)
@@ -98,24 +101,24 @@ with dataset_info:
     st.bokeh_chart(p, use_container_width=True)
 
     AD_plus_EMA = calculate_AD_EMA(snp_AD)
-    x = AD_plus_EMA.loc[date_mask].Date
-    y = AD_plus_EMA.loc[date_mask]['S&P500']
+    
+    x = AD_plus_EMA['Date'].values
+    y = AD_plus_EMA['S&P500'].values
     p = figure(title = 'A/D line',
         x_axis_label = 'Date',
         y_axis_label = 'A/D value',
-        x_axis_type ='datetime',
-        
-        plot_width = 800,
-        plot_height = 200,
+        x_axis_type ='datetime',        
+        min_width = 800,
+        min_height = 200,
         tools = 'wheel_zoom, pan, reset')
     
     p.line(x, y,  line_width=1, color = 'coral')
 
-    y = AD_plus_EMA.loc[date_mask]['EMA_3']
+    y = AD_plus_EMA['EMA_3'].values
     p.line(x, y,  line_width=2, color = 'green', alpha = 1, legend_label = 'EMA(3)')
-    y = AD_plus_EMA.loc[date_mask]['EMA_7']
+    y = AD_plus_EMA['EMA_7'].values
     p.line(x, y,  line_width=2, color = 'cyan', alpha = 1, legend_label = 'EMA(7)',)
-    y = AD_plus_EMA.loc[date_mask]['EMA_10']
+    y = AD_plus_EMA['EMA_10'].values
     p.line(x, y,  line_width=2, color = 'purple', alpha = 1, legend_label = 'EMA(10)')
     p.legend.location = 'top_left'
     p.toolbar.active_scroll = "auto"
@@ -261,7 +264,11 @@ with filtered:
 
 
 st.caption(f"The table below can be sorted by clicking on the column header.")
-st.dataframe(thresh_filtered[['Date', 'Symbol', 'WillR', 'WillR_EMA', 'Close']])
+ticker_data = get_industries()
+name_dict = dict(zip(ticker_data['Symbol'], ticker_data['Security']))
+
+thresh_filtered['Name'] = thresh_filtered['Symbol'].map(name_dict)
+st.dataframe(thresh_filtered[['Date', 'Symbol','Name', 'WillR', 'WillR_EMA', 'Close']])
 
 
 

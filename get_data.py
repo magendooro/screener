@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 yf_params = {
     "interval":'1d',
-    "start" : datetime.date(2019,1,1),
+    "start" : datetime.date(2022,1,1),
     "end" : datetime.date.today(),
     "group_by":'ticker',
     "auto_adjust":True,
